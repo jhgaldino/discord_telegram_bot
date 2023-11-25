@@ -17,7 +17,7 @@ client = TelegramClient('anon', api_id, api_hash)
 
 discord_token = os.environ.get('DISCORD_TOKEN')
 telegram_channels = os.environ.get('TELEGRAM_CHANNELS').split(',')
-print(telegram_channels)
+
 # Variável global para armazenar o contexto
 global_ctx = None
 
