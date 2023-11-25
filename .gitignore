@@ -1,0 +1,5 @@
+.env
+tweetbotenv
+annon.session
+phone.session
+tweetbot.py
