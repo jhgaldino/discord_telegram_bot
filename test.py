@@ -16,11 +16,12 @@ api_hash = os.environ.get('TELEGRAM_API_HASH')
 client = TelegramClient('anon', api_id, api_hash)
 
 discord_token = os.environ.get('DISCORD_TOKEN')
-
+telegram_channels = os.environ.get('TELEGRAM_CHANNELS').split(',')
+print(telegram_channels)
 # Variável global para armazenar o contexto
 global_ctx = None
 
-@client.on(events.NewMessage(chats=['urubupromo', 'pobregram']))
+@client.on(events.NewMessage(chats=telegram_channels))
 async def my_event_handler(event):
     global global_ctx
     # Envia a nova mensagem para o canal do Discord
