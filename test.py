@@ -21,12 +21,14 @@ telegram_channels = os.environ.get('TELEGRAM_CHANNELS').split(',')
 # Variável global para armazenar o contexto
 global_ctx = None
 
+# Evento para quando o bot do Discord estiver pronto
 @client.on(events.NewMessage(chats=telegram_channels))
 async def my_event_handler(event):
     global global_ctx
     # Envia a nova mensagem para o canal do Discord
     if global_ctx:
         await global_ctx.send(event.raw_text)
+        
 
 # Comando para iniciar a verificação de novas mensagens
 @bot.command()
@@ -34,5 +36,6 @@ async def start_checking_messages(ctx):
     global global_ctx
     global_ctx = ctx
     await client.start()
+
 
 bot.run(discord_token)
