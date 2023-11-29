@@ -113,7 +113,7 @@ Execute o bot do Discord com o seguinte comando:
 python main.py
 ```
 
-Para o primeiro acesso, o bot solicitará que você faça login no Telegram pedido o número do seu telefone e o código de verificação que será enviado para você, depois pedirá a senha do seu Telegram. Após o login, o bot criará um arquivos de sessão na raiz do projeto. Você não precisará fazer login novamente, pois o bot usará o arquivo de sessão para se autenticar.
+Para o primeiro acesso, o bot solicitará que você faça login no Telegram pedido o número do seu telefone e o código de verificação que será enviado para você, depois pedirá a senha do seu Telegram. Após o login, o bot criará arquivos de sessão na raiz do projeto. Você não precisará fazer login novamente, pois o bot usará o arquivo de sessão para se autenticar.
 
 O bot será iniciado e estará pronto para responder a comandos no servidor do Discord.
 
