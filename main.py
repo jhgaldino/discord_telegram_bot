@@ -46,10 +46,24 @@ async def my_event_handler(event):
         await global_ctx.send(text) 
 
 # Comando para iniciar a verificação de novas mensagens
+
 @bot.command(name='start')
 async def start_checking_messages(ctx):
     global global_ctx
     global_ctx = ctx
     await client.start()
+'''
 
+@bot.event
+async def on_ready():
+    global global_ctx
+    print('Bot is ready.')
+    await client.start()
+    for channel in telegram_channels:
+        @client.on(events.NewMessage(chats=channel, func=filter))
+        async def my_event_handler(event):
+            text = format(event)
+            if global_ctx:
+                await global_ctx.send(text)
+'''	
 bot.run(discord_token)
