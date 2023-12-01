@@ -15,12 +15,14 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 api_id = os.environ.get('TELEGRAM_API_ID')
 api_hash = os.environ.get('TELEGRAM_API_HASH')
 client = TelegramClient('anon', api_id, api_hash)
-
-discord_token = os.environ.get('DISCORD_TOKEN')
 telegram_channels = os.environ.get('TELEGRAM_CHANNELS').split(',')
 
+# Valores do Discord
+discord_token = os.environ.get('DISCORD_TOKEN')
+discord_channel_ids = [int(str_id) for str_id in os.environ.get('DISCORD_CHANNEL_ID').split(',')]
+
 # Variável global para armazenar o contexto
-global_ctx = None
+discord_channels = set()
 
 def filter(event):
     if re.search(r'https://', event.raw_text):
@@ -40,30 +42,19 @@ def format(event: events.NewMessage.Event):
 # Evento para quando o bot do Discord estiver pronto
 @client.on(events.NewMessage(chats=telegram_channels, func=filter))
 async def my_event_handler(event):
+    text = format(event)
     # Envia a nova mensagem para o canal do Discord
-    if global_ctx:
-        text = format(event)
-        await global_ctx.send(text) 
-
-# Comando para iniciar a verificação de novas mensagens
-
-@bot.command(name='start')
-async def start_checking_messages(ctx):
-    global global_ctx
-    global_ctx = ctx
-    await client.start()
-'''
+    for channel in discord_channels:
+        await channel.send(text) 
 
 @bot.event
 async def on_ready():
-    global global_ctx
-    print('Bot is ready.')
     await client.start()
-    for channel in telegram_channels:
-        @client.on(events.NewMessage(chats=channel, func=filter))
-        async def my_event_handler(event):
-            text = format(event)
-            if global_ctx:
-                await global_ctx.send(text)
-'''	
+    print('Bot is ready.')
+    for channel_id in discord_channel_ids:
+        discord_channels.add(bot.get_channel(channel_id))
+    for channel in discord_channels:
+        await channel.send('Bot is ready.')
+
+
 bot.run(discord_token)
