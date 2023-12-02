@@ -3,6 +3,9 @@ import re
 import discord
 from discord.ext import commands
 from telethon import TelegramClient, events
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Inicializa os intents do Discord
 intents = discord.Intents.default()
@@ -40,12 +43,14 @@ def format(event: events.NewMessage.Event):
 #     print(text)
 
 # Evento para quando o bot do Discord estiver pronto
-@client.on(events.NewMessage(chats=telegram_channels, func=filter))
-async def my_event_handler(event):
-    text = format(event)
-    # Envia a nova mensagem para o canal do Discord
-    for channel in discord_channels:
-        await channel.send(text) 
+# Cria um manipulador de eventos para cada canal
+for telegram_channel in telegram_channels:
+    @client.on(events.NewMessage(chats=telegram_channel, func=filter))
+    async def my_event_handler(event):
+        text = format(event)
+        # Envia a nova mensagem para o canal do Discord
+        for channel in discord_channels:
+            await channel.send(text)
 
 @bot.event
 async def on_ready():
