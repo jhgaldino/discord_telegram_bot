@@ -65,9 +65,14 @@ As seguintes variáveis de ambiente precisam ser configuradas para o funcionamen
 
 ```TELEGRAM_CHANNELS: Uma lista de canais do Telegram separados por vírgulas que você deseja monitorar. Por exemplo, canal1,canal2,canal3.```
 
+```DISCORD_CHANNELS: Uma lista de canais do Discord separados por vírgulas para os quais você deseja enviar novas mensagens do Telegram. Por exemplo, canal1,canal2,canal3.```
+
+```TELEGRAM_SESSION_STRING: Uma string de sessão do Telegram. Se você não tiver uma string de sessão, o bot solicitará que você faça login no Telegram e criará uma string de sessão para você. Você pode usar essa string de sessão para se autenticar no Telegram sem fazer login novamente.```
+
+
 Você pode configurar essas variáveis de ambiente no seu sistema ou criar um arquivo .env na raiz do projeto e definir as variáveis lá.
 
-## Passo 3: Configure um Ambiente Virtual e Instale as Dependências
+## Passo 3(Opcional): Configure um Ambiente Virtual e Instale as Dependências
 
 É recomendável configurar um ambiente virtual para isolar as dependências deste projeto. Siga os passos abaixo para criar e ativar um ambiente virtual:
 
@@ -117,10 +122,25 @@ Para o primeiro acesso, o bot solicitará que você faça login no Telegram pedi
 Exemplo: +551199999-9999
 
  Um código de verificação será enviado para você. Digite o código de verificação no prompt de comando.
- Depois pedirá a senha do seu Telegram. Após o login, o bot criará arquivos de sessão na raiz do projeto. Você não precisará fazer login novamente, pois o bot usará o arquivo de sessão para se autenticar.
+ Depois pedirá a senha do seu Telegram.
 
 O bot será iniciado e estará pronto para responder a comandos no servidor do Discord.
 
-## Passo 5: Inicie a Verificação de Novas Mensagens
+Se quiser ver a sua string de conexão do Telegram, coloque esse bloco de codigo no seu arquivo main.py
 
-No servidor do Discord onde o bot está instalado, você pode usar o comando ```!start``` para iniciar a verificação de novas mensagens nos canais do Telegram configurados. O bot enviará novas mensagens do Telegram para o canal correspondente no Discord.
+```
+@bot.command(name='session')
+async def session(ctx):
+    await ctx.send(f'```{TELEGRAM_SESSION_STRING}```')
+```
+
+Sua string de conexão do Telegram será exibida no prompt de comando ao executar o arquivo main.py.
+Copie a string de conexão e cole-a na variável de ambiente TELEGRAM_SESSION_STRING.
+Depois voce pode apagar o bloco de codigo que voce colocou no arquivo main.py
+
+## Passo 5: Verificação de Novas Mensagens
+
+No servidor do Discord onde o bot está instalado, verifique se o bot está online. Você verá o status do bot como online.
+Verifique as novas mensagens no Telegram. Se houver novas mensagens, o bot as enviará para o servidor do Discord. 
+
+
