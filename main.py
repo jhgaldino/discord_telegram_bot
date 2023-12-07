@@ -3,6 +3,7 @@ import re
 import discord
 from discord.ext import commands
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,8 +18,8 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Valores do Telegram
 api_id = os.environ.get('TELEGRAM_API_ID')
 api_hash = os.environ.get('TELEGRAM_API_HASH')
-client = TelegramClient('anon', api_id, api_hash)
 telegram_channels = os.environ.get('TELEGRAM_CHANNELS').split(',')
+telegram_session_string = os.environ.get('TELEGRAM_SESSION_STRING')
 
 # Valores do Discord
 discord_token = os.environ.get('DISCORD_TOKEN')
@@ -26,6 +27,8 @@ discord_channel_ids = [int(str_id) for str_id in os.environ.get('DISCORD_CHANNEL
 
 # Variável global para armazenar o contexto
 discord_channels = set()
+# Inicializa a sessão do Telegram
+client = TelegramClient(StringSession(telegram_session_string), api_id, api_hash)
 
 def filter(event):
     if re.search(r'https://', event.raw_text):
@@ -35,12 +38,6 @@ def filter(event):
 def format(event: events.NewMessage.Event):
     text = re.sub(r"\n+", "\n", event.raw_text)
     return text
-
-# Exemplo de Teste de eventos
-# @client.on(events.NewMessage(func=filter))
-# async def teste(event):
-#     text = format(event)
-#     print(text)
 
 # Evento para quando o bot do Discord estiver pronto
 # Cria um manipulador de eventos para cada canal
@@ -60,6 +57,5 @@ async def on_ready():
         discord_channels.add(bot.get_channel(channel_id))
     for channel in discord_channels:
         await channel.send('Bot is ready.')
-
 
 bot.run(discord_token)
