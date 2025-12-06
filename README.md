@@ -55,22 +55,7 @@ Clique no link gerado em Scopes e adicione o bot ao seu servidor do Discord.
 
 ## Passo 2: Configure as Variáveis de Ambiente
 
-As seguintes variáveis de ambiente precisam ser configuradas para o funcionamento do bot:
-
-```TELEGRAM_API_ID: Seu API ID do Telegram.```
-
-```TELEGRAM_API_HASH: Sua API Hash do Telegram.``` 
-
-```DISCORD_TOKEN: Token de autenticação do seu bot no Discord. Você pode criar um bot no Portal de Desenvolvedores do Discord e obter o token.```
-
-```TELEGRAM_CHANNELS: Uma lista de canais do Telegram separados por vírgulas que você deseja monitorar. Por exemplo, canal1,canal2,canal3.```
-
-```DISCORD_CHANNELS: Uma lista de canais do Discord separados por vírgulas para os quais você deseja enviar novas mensagens do Telegram. Por exemplo, canal1,canal2,canal3.```
-
-```TELEGRAM_SESSION_STRING: Uma string de sessão do Telegram. Se você não tiver uma string de sessão, o bot solicitará que você faça login no Telegram e criará uma string de sessão para você. Você pode usar essa string de sessão para se autenticar no Telegram sem fazer login novamente.```
-
-
-Você pode configurar essas variáveis de ambiente no seu sistema ou criar um arquivo .env na raiz do projeto e definir as variáveis lá.
+Crie um arquivo .env na raiz do projeto, seguindo o exemplo do arquivo .env.example.
 
 ## Passo 3(Opcional): Configure um Ambiente Virtual e Instale as Dependências
 

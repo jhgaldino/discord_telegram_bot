@@ -3,7 +3,6 @@ import re
 import discord
 from discord.ext import commands
 from telethon import TelegramClient, events
-from telethon.sessions import StringSession
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,16 +18,16 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 api_id = os.environ.get('TELEGRAM_API_ID')
 api_hash = os.environ.get('TELEGRAM_API_HASH')
 telegram_channels = os.environ.get('TELEGRAM_CHANNELS').split(',')
-telegram_session_string = os.environ.get('TELEGRAM_SESSION_STRING')
+telegram_session_name = os.environ.get('TELEGRAM_SESSION_NAME')
 
 # Valores do Discord
 discord_token = os.environ.get('DISCORD_TOKEN')
-discord_channel_ids = [int(str_id) for str_id in os.environ.get('DISCORD_CHANNEL_ID').split(',')]
+discord_channel_ids = [int(str_id) for str_id in os.environ.get('DISCORD_CHANNEL_IDS').split(',')]
 
 # Variável global para armazenar o contexto
 discord_channels = set()
 # Inicializa a sessão do Telegram
-client = TelegramClient(StringSession(telegram_session_string), api_id, api_hash)
+client = TelegramClient(telegram_session_name, api_id, api_hash)
 
 def filter(event):
     if re.search(r'https://', event.raw_text):
