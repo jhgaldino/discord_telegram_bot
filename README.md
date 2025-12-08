@@ -126,6 +126,9 @@ Depois voce pode apagar o bloco de codigo que voce colocou no arquivo main.py
 ## Passo 5: Verificação de Novas Mensagens
 
 No servidor do Discord onde o bot está instalado, verifique se o bot está online. Você verá o status do bot como online.
-Verifique as novas mensagens no Telegram. Se houver novas mensagens, o bot as enviará para o servidor do Discord. 
-
+Verifique as novas mensagens no Telegram. Se houver novas mensagens, o bot as enviará para o servidor do Discord.
+Teste os comandos do bot no servidor do Discord para garantir que tudo esteja funcionando corretamente.
+ /lembrar "texto" - Envia uma mensagem direct e marca o usuario de lembrete com o texto especificado.
+ /listar - Lista todos os lembretes ativos do usuario que executou o comando.
+ /esquecer "texto" - Remove o lembrete com o texto especificado do usuario que executou o comando.
 
