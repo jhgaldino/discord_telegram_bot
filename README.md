@@ -61,12 +61,12 @@ Crie um arquivo .env na raiz do projeto, seguindo o exemplo do arquivo .env.exam
 
 É recomendável configurar um ambiente virtual para isolar as dependências deste projeto. Para isso, navegue até a pasta raiz do projeto onde você clonou o repositório e execute o seguinte comando:
 
-- Windows (cmd): 
-  - `python -m venv venv && venv\Scripts\activate.bat`
-- Windows (PowerShell): 
-  - `python -m venv venv && venv\Scripts\Activate.ps1`
-- macOS / Linux: 
-  - `python -m venv venv && source venv/bin/activate`
+- Windows (cmd):
+  - `python3 -m venv venv && venv\Scripts\activate.bat`
+- Windows (PowerShell):
+  - `python3 -m venv venv && venv\Scripts\Activate.ps1`
+- macOS / Linux:
+  - `python3 -m venv venv && source venv/bin/activate`
 
 Você verá o nome do ambiente virtual aparecendo no seu prompt de comando, indicando que o ambiente está ativo.
 
