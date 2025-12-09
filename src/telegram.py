@@ -64,7 +64,7 @@ async def login(client: telethon.TelegramClient, qr_callback=None, success_callb
     
     try:
         await asyncio.wait_for(qr_login.wait(60), timeout=60.0)
-    except (AUTH_ERRORS, PASSWORD_ERRORS):
+    except AUTH_ERRORS + PASSWORD_ERRORS:
         raise
     except telethon.errors.rpcerrorlist.SessionPasswordNeededError:
         # Handle 2FA password requirement
