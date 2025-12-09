@@ -57,39 +57,19 @@ Clique no link gerado em Scopes e adicione o bot ao seu servidor do Discord.
 
 Crie um arquivo .env na raiz do projeto, seguindo o exemplo do arquivo .env.example.
 
-## Passo 3(Opcional): Configure um Ambiente Virtual e Instale as Dependências
+## Passo 3 (Opcional): Configure um Ambiente Virtual
 
-É recomendável configurar um ambiente virtual para isolar as dependências deste projeto. Siga os passos abaixo para criar e ativar um ambiente virtual:
+É recomendável configurar um ambiente virtual para isolar as dependências deste projeto. Para isso, navegue até a pasta raiz do projeto onde você clonou o repositório e execute o seguinte comando:
 
-Navegue até a pasta raiz do projeto onde você clonou o repositório.
+- Windows (cmd): 
+  - `python -m venv venv && venv\Scripts\activate.bat`
+- Windows (PowerShell): 
+  - `python -m venv venv && venv\Scripts\Activate.ps1`
+- macOS / Linux: 
+  - `python -m venv venv && source venv/bin/activate`
 
-Crie um ambiente virtual executando o seguinte comando:
-
-
-```
-python -m venv venv
-```
-
-Isso criará uma pasta chamada venv no diretório do projeto, que conterá todas as dependências isoladas.
-
-Ative o ambiente virtual:
-
-No Windows:
-
-```
-venv\Scripts\activate.bat
-```
-### Obs : Se você estiver usando o PowerShell ou Windows 11, execute o seguinte comando em vez disso:
-
-```
-venv\Scripts\Activate.ps1
-```
-No macOS e Linux:
-
-```
-source venv/bin/activate
-```
 Você verá o nome do ambiente virtual aparecendo no seu prompt de comando, indicando que o ambiente está ativo.
+
 ## Passo 3: Instale as Dependências
 
 Instale as dependências Python necessárias executando o seguinte comando na raiz do projeto:
@@ -103,36 +83,31 @@ Execute o bot do Discord com o seguinte comando:
 python main.py
 ```
 
-Para o primeiro acesso, o bot solicitará que você faça login no Telegram pedido o número do seu telefone e o código de verificação que será enviado para você, por favor coloque o código do pais e o código de area do seu numero de telefone.
-Exemplo: +551199999-9999
+O bot será iniciado e tentará conectar automaticamente ao Telegram se já existir uma sessão válida. Caso contrário, você precisará fazer login usando o comando `/login` no Discord.
 
- Um código de verificação será enviado para você. Digite o código de verificação no prompt de comando.
- Depois pedirá a senha do seu Telegram.
+## Passo 5: Login no Telegram
 
-O bot será iniciado e estará pronto para responder a comandos no servidor do Discord.
+O login no Telegram é feito através do Discord usando QR code:
 
-Se quiser ver a sua string de conexão do Telegram, coloque esse bloco de codigo no seu arquivo main.py
+1. No servidor do Discord onde o bot está instalado, execute o comando `/login`
+2. O bot enviará uma imagem com um QR code (privada, apenas você pode ver)
+3. Abra o aplicativo Telegram no seu celular
+4. Vá em **Configurações** > **Dispositivos** > **Conectar dispositivo por QR code**
+5. Escaneie o QR code exibido no Discord
+6. Se sua conta tiver autenticação de dois fatores (2FA), use o comando `/login senha:sua_senha` para fornecer a senha
 
-```
-@bot.command(name='session')
-async def session(ctx):
-    await ctx.send(f'```{TELEGRAM_SESSION_STRING}```')
-```
+**Notas importantes:**
+- O comando `/login` é privado (ephemeral) - apenas você pode ver o QR code e as mensagens
+- Se você já estiver logado, o bot informará seu status atual
+- Se o QR code expirar, execute `/login` novamente para gerar um novo
+- O bot tentará reconectar automaticamente na próxima inicialização se a sessão ainda for válida
 
-Sua string de conexão do Telegram será exibida no prompt de comando ao executar o arquivo main.py.
-Copie a string de conexão e cole-a na variável de ambiente TELEGRAM_SESSION_STRING.
-Depois voce pode apagar o bloco de codigo que voce colocou no arquivo main.py
-
-## Passo 5: Verificação de Novas Mensagens
+## Passo 6: Verificação de Novas Mensagens
 
 No servidor do Discord onde o bot está instalado, verifique se o bot está online. Você verá o status do bot como online.
 Verifique as novas mensagens no Telegram. Se houver novas mensagens, o bot as enviará para o servidor do Discord.
 Teste os comandos do bot no servidor do Discord para garantir que tudo esteja funcionando corretamente.
-## Comandos Disponíveis
-```
- /lembrar "texto" - Envia uma mensagem direct e marca o usuario de lembrete com o texto especificado.
 
- /listar - Lista todos os lembretes ativos do usuario que executou o comando.
- 
- /esquecer "texto" - Remove o lembrete com o texto especificado do usuario que executou o comando.
-```
+## Comandos Disponíveis
+
+Todos os comandos estão dispoíveis usando barra (slash) no Discord. Procure pelo bot na lateral esquerda da barra de comandos. Alguns deles são privados e apenas o dono do bot pode usar. Como `/status` para verificar o status do bot.

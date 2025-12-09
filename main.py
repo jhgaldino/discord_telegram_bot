@@ -116,6 +116,11 @@ async def forget_reminder(interaction: discord.Interaction, lembrete: str):
 
 @bot.tree.command(name='status', description='Mostra vários status do bot')
 async def status(interaction: discord.Interaction):
+    # Check if user is bot owner
+    if not is_owner(interaction):
+        await interaction.response.send_message('Você não tem permissão para usar este comando.', ephemeral=True)
+        return
+
     await interaction.response.defer(ephemeral=True)
     
     status_lines = []
