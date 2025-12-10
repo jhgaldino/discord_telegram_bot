@@ -1,4 +1,4 @@
-## Bot de Integração Discord-Telegram
+## Bot de Integração Discord-Telegram - v2
 
 Este bot permite integrar mensagens de um canal do Telegram com um servidor do Discord.
 
@@ -32,7 +32,6 @@ Você verá o API ID e o API Hash do seu aplicativo. Anote-os, pois você precis
 
 ## Passo 2: Crie um Bot no Discord
 
-
 Crie uma conta no Discord se você ainda não tiver uma.
 
 Visite o Portal de Desenvolvedores do Discord e faça login com sua conta do Discord.
@@ -50,8 +49,6 @@ Marque as caixas de seleção Send Messages e Read Message History na seção Bo
 Marque as caixas de seleção Presence Intent e Server Members Intent na seção Privileged Gateway Intents.
 
 Clique no link gerado em Scopes e adicione o bot ao seu servidor do Discord.
-
-
 
 ## Passo 2: Configure as Variáveis de Ambiente
 
@@ -73,10 +70,13 @@ Você verá o nome do ambiente virtual aparecendo no seu prompt de comando, indi
 ## Passo 3: Instale as Dependências
 
 Instale as dependências Python necessárias executando o seguinte comando na raiz do projeto:
+
 ```
 pip install -r requirements.txt
 ```
+
 ## Passo 4: Inicie o Bot do Discord
+
 Execute o bot do Discord com o seguinte comando:
 
 ```
@@ -97,6 +97,7 @@ O login no Telegram é feito através do Discord usando QR code:
 6. Se sua conta tiver autenticação de dois fatores (2FA), use o comando `/login senha:sua_senha` para fornecer a senha
 
 **Notas importantes:**
+
 - O comando `/login` é privado (ephemeral) - apenas você pode ver o QR code e as mensagens
 - Se você já estiver logado, o bot informará seu status atual
 - Se o QR code expirar, execute `/login` novamente para gerar um novo
@@ -111,3 +112,7 @@ Teste os comandos do bot no servidor do Discord para garantir que tudo esteja fu
 ## Comandos Disponíveis
 
 Todos os comandos estão dispoíveis usando barra (slash) no Discord. Procure pelo bot na lateral esquerda da barra de comandos. Alguns deles são privados e apenas o dono do bot pode usar. Como `/status` para verificar o status do bot.
+
+## Agradecimenmtos
+
+@DanGM pela ideia de evolução e desenvolvimento da v2 do bot.
