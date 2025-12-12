@@ -18,9 +18,10 @@ load_dotenv()
 # Inicializa os intents do Discord
 intents = discord.Intents.default()
 intents.message_content = True
+command_prefix = '🝍' # Não usamos comandos por prefixo, mas precisamos de um valor para inicializar o bot
 
 # Inicializa o bot do Discord com os intents
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix=command_prefix, intents=intents)
 
 # Valores do Telegram
 api_id = os.environ.get('TELEGRAM_API_ID')
@@ -268,11 +269,6 @@ async def telegram_login(interaction: discord.Interaction, senha: str = None):
             await cleanup_qr_message()
     
     asyncio.create_task(run_login())
-
-@bot.event
-async def on_command_error(ctx: commands.Context, error: commands.CommandError):
-    # Ignore all non-slash commands
-    pass
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
