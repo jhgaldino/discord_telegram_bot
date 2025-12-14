@@ -29,10 +29,18 @@ class TelegramClientManager:
     async def connect(self) -> None:
         """Connect to Telegram."""
         await self.client.connect()
+
+        if not await self.client.is_user_authorized():
+            logger.info("Usuário não autorizado. Por favor, faça login.")
+            return
+        
         user = await self.client.get_me()
-        logger.info(
-            f"Telegram client connected as {user.first_name} (@{user.username})"
-        )
+        if user:
+            logger.info(
+                f"Telegram client connected as {user.first_name} (@{user.username})"
+            )
+        else:
+            logger.info("Telegram client connected, but failed to retrieve user info")
 
     async def disconnect(self) -> None:
         """Disconnect from Telegram."""
