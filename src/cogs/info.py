@@ -18,7 +18,7 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
     def __init__(self) -> None:
         self.start_time = datetime.now(timezone.utc)
 
-    @app_commands.command(name="info", description="Display bot information")
+    @app_commands.command(name="info", description="Mostra informações sobre o bot")
     async def info(self, interaction: discord.Interaction) -> None:
         """Display bot information."""
         uptime = datetime.now(timezone.utc) - self.start_time
@@ -120,9 +120,8 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
 
                 # Check authentication
                 try:
-                    is_authorized = await telegram_manager.is_user_authorized()
-                    if is_authorized:
-                        me = await telegram_manager.client.get_me()
+                    me = await telegram_manager.client.get_me()
+                    if me:
                         status_lines.append(
                             f"✅ **Autenticação:** Logado como **{me.first_name}** (@{me.username})"
                         )

@@ -89,7 +89,6 @@ class Bot(commands.Bot):
         """Called when the bot is ready."""
         self.logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
         self.logger.info(f"Connected to {len(self.guilds)} guild(s)")
-        self.logger.info("Automatic hot-reload is enabled for the 'cogs' directory")
 
         synced = await self.tree.sync()
         self.logger.info(f"Synced {len(synced)} command(s)")

@@ -26,7 +26,9 @@ def is_owner(bot: commands.Bot, interaction: discord.Interaction) -> bool:
 
 
 class Telegram(
-    commands.GroupCog, name="telegram", description="Telegram configuration commands"
+    commands.GroupCog,
+    name="telegram",
+    description="Comandos de configuração do Telegram",
 ):
     """A cog for Telegram configuration commands."""
 
@@ -75,10 +77,10 @@ class Telegram(
             if not telegram_manager.is_connected():
                 await telegram_manager.connect()
 
-            if await telegram_manager.is_user_authorized():
-                me = await telegram_manager.client.get_me()
+            me = await telegram_manager.client.get_me()
+            if me:
                 await interaction.followup.send(
-                    f"Já está logado como **{me.first_name}** (@{me.username or 'sem username'})",
+                    f"Já está logado como **{me.first_name}** (@{me.username})",
                     ephemeral=True,
                 )
                 return

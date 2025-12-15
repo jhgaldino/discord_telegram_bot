@@ -9,7 +9,9 @@ from src.shared.utils import format_list_to_markdown, plural
 
 
 class Reminders(
-    commands.GroupCog, name="reminders", description="Reminder management commands"
+    commands.GroupCog,
+    name="lembretes",
+    description="Gerenciamento de lembretes",
 ):
     """A cog for reminder commands."""
 
@@ -17,10 +19,12 @@ class Reminders(
         pass
 
     @app_commands.command(
-        name="lembrar",
+        name="adicionar",
         description="Peça para o bot te lembrar quando encontrar um texto específico",
     )
-    async def lembrar(self, interaction: discord.Interaction, lembrete: str) -> None:
+    async def add_reminder(
+        self, interaction: discord.Interaction, lembrete: str
+    ) -> None:
         """Add a reminder."""
         reminders.add_user_to_reminder(interaction.user.id, lembrete)
         await interaction.response.send_message(
@@ -31,7 +35,7 @@ class Reminders(
         name="listar",
         description="Mostra os lembretes que o bot está guardando pra você",
     )
-    async def listar(self, interaction: discord.Interaction) -> None:
+    async def list_reminders(self, interaction: discord.Interaction) -> None:
         """List all reminders for the user."""
         reminder_list = reminders.list_by_user(interaction.user.id)
         if not reminder_list:
@@ -45,8 +49,10 @@ class Reminders(
         message = f"Você tem {quant} lembrete{plural(quant, '', 's')} guardado{plural(quant, '', 's')}:\n{markdown_list}"
         await interaction.response.send_message(message)
 
-    @app_commands.command(name="esquecer", description="Remove um lembrete da lista")
-    async def esquecer(self, interaction: discord.Interaction, lembrete: str) -> None:
+    @app_commands.command(name="remover", description="Remove um lembrete da lista")
+    async def remove_reminder(
+        self, interaction: discord.Interaction, lembrete: str
+    ) -> None:
         """Remove a reminder."""
         reminders.remove_user_from_reminder(interaction.user.id, lembrete)
         await interaction.response.send_message(

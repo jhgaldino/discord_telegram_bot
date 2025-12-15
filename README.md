@@ -103,7 +103,7 @@ Todos os comandos são **slash commands** (barra `/`):
 
 - `/info` - Informações sobre o bot
 - `/telegram login` - Fazer login no Telegram via QR code
-- `/reminders` - Gerenciar lembretes (ver subcomandos)
+- `/lembretes` - Gerenciar lembretes (ver subcomandos)
 
 Alguns comandos são privados e apenas o dono do bot pode usar.
 
