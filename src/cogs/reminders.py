@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.shared import reminders
+from src.database import reminders
 from src.shared.utils import format_list_to_markdown, plural
 
 
@@ -26,7 +26,7 @@ class Reminders(
         self, interaction: discord.Interaction, lembrete: str
     ) -> None:
         """Add a reminder."""
-        reminders.add_user_to_reminder(interaction.user.id, lembrete)
+        reminders.add_reminder(interaction.user.id, lembrete)
         await interaction.response.send_message(
             f"Vou te lembrar quando encontrar **{lembrete}**"
         )
@@ -37,7 +37,7 @@ class Reminders(
     )
     async def list_reminders(self, interaction: discord.Interaction) -> None:
         """List all reminders for the user."""
-        reminder_list = reminders.list_by_user(interaction.user.id)
+        reminder_list = reminders.get_user_reminders(interaction.user.id)
         if not reminder_list:
             await interaction.response.send_message(
                 "Você não tem nenhum lembrete guardado"
@@ -54,7 +54,7 @@ class Reminders(
         self, interaction: discord.Interaction, lembrete: str
     ) -> None:
         """Remove a reminder."""
-        reminders.remove_user_from_reminder(interaction.user.id, lembrete)
+        reminders.remove_reminder(interaction.user.id, lembrete)
         await interaction.response.send_message(
             f"Não vou mais te lembrar de **{lembrete}**"
         )
