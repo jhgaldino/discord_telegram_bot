@@ -1,113 +1,149 @@
-## Bot de Integração Discord-Telegram
+# Bot de Integração Discord-Telegram v2
 
-Este bot permite integrar mensagens de um canal do Telegram com um servidor do Discord.
+Bot que integra mensagens de canais do Telegram com servidores do Discord, desenvolvido para aprendizado e desenvolvimento de skills.
 
-Este bot foi desenvolvido para acompanhar canais de promoções no Telegram e enviar novas mensagens para um servidor do Discord. Por isso ele possui um filtro que somente envia mensagens que contenham links de promoções. Se quiser você pode remover o filtro e usar o bot para acompanhar qualquer canal do Telegram.
+## Funcionalidades
 
-### Requisitos
+- 🔄 **Hot-reload automático** de extensões (cogs) durante desenvolvimento
+- 🔐 **Autenticação via QR Code** para Telegram com suporte a 2FA
+- 📨 **Filtro inteligente** que envia apenas mensagens com links de promoções
+- ⚡ **Inicialização paralela** do bot Discord e cliente Telegram para melhor performance
+- 🎯 **Comandos slash** modernos usando `app_commands`
+- 🛡️ **Tratamento robusto de erros** com cleanup automático de recursos
+- 📊 **Comandos de status** para monitorar o estado do bot e conexões
 
-Python 3.6 ou superior instalado
+## Arquitetura
 
-Conta no Discord
+O projeto segue uma arquitetura modular e desacoplada:
 
-Conta no Telegram
+- **`src/services/discord/`** - Cliente Discord com hot-reload de cogs
+- **`src/services/telegram/`** - Cliente Telegram com autenticação QR
+- **`src/cogs/`** - Extensões modulares (comandos organizados por grupo)
+- **`src/shared/`** - Código compartilhado entre serviços
+- **`src/config.py`** - Gerenciamento centralizado de configuração e inicialização
 
-## Passo 1: Clone o Repositório
+### Características Técnicas
 
-Clone o repositório do projeto para sua máquina local
+- **Inicialização paralela**: Bot Discord e cliente Telegram são inicializados simultaneamente usando `asyncio.gather()`
+- **Type safety**: Tipagem completa com type hints e validação em tempo de execução
+- **Cleanup automático**: Recursos são limpos automaticamente mesmo em caso de erro
+- **Factory pattern**: Uso de métodos `create_and_initialize()` para criação consistente de instâncias
 
-## Passo 2: Crie uma Aplicação no Telegram
+## Requisitos
 
-Para usar a API do Telegram, você precisa criar um aplicativo Telegram. Siga as etapas abaixo para criar um aplicativo Telegram e obter as credenciais necessárias para usar a API do Telegram.
+- Python 3.10 ou superior
+- Conta no Discord com bot criado
+- Conta no Telegram com API credentials
 
-Crie uma conta no Telegram se você ainda não tiver uma.
+## Instalação
 
-Visite o site do Telegram para desenvolvedores e faça login com sua conta do Telegram.
+### 1. Clone o Repositório
 
-Clique em Criar aplicativo Telegram.
-
-Preencha os detalhes do aplicativo e clique em Criar aplicativo.
-
-Você verá o API ID e o API Hash do seu aplicativo. Anote-os, pois você precisará deles mais tarde.
-
-## Passo 2: Crie um Bot no Discord
-
-
-Crie uma conta no Discord se você ainda não tiver uma.
-
-Visite o Portal de Desenvolvedores do Discord e faça login com sua conta do Discord.
-
-Clique em Novo aplicativo e dê um nome ao seu aplicativo.
-
-Clique em Bot no menu lateral esquerdo e clique em Adicionar bot.
-
-Você verá o token de autenticação do seu bot.
-
-Clique em OAuth2 no menu lateral esquerdo e marque a caixa de seleção bot na seção Scopes.
-
-Marque as caixas de seleção Send Messages e Read Message History na seção Bot Permissions.
-
-Marque as caixas de seleção Presence Intent e Server Members Intent na seção Privileged Gateway Intents.
-
-Clique no link gerado em Scopes e adicione o bot ao seu servidor do Discord.
-
-
-
-## Passo 2: Configure as Variáveis de Ambiente
-
-Crie um arquivo .env na raiz do projeto, seguindo o exemplo do arquivo .env.example.
-
-## Passo 3 (Opcional): Configure um Ambiente Virtual
-
-É recomendável configurar um ambiente virtual para isolar as dependências deste projeto. Para isso, navegue até a pasta raiz do projeto onde você clonou o repositório e execute o seguinte comando:
-
-- Windows (cmd):
-  - `python3 -m venv venv && venv\Scripts\activate.bat`
-- Windows (PowerShell):
-  - `python3 -m venv venv && venv\Scripts\Activate.ps1`
-- macOS / Linux:
-  - `python3 -m venv venv && source venv/bin/activate`
-
-Você verá o nome do ambiente virtual aparecendo no seu prompt de comando, indicando que o ambiente está ativo.
-
-## Passo 3: Instale as Dependências
-
-Instale as dependências Python necessárias executando o seguinte comando na raiz do projeto:
+```bash
+git clone <repository-url>
+cd discord_telegram_bot
 ```
+
+### 2. Configure o Ambiente Virtual
+
+```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Instale as Dependências
+
+```bash
 pip install -r requirements.txt
 ```
-## Passo 4: Inicie o Bot do Discord
-Execute o bot do Discord com o seguinte comando:
 
+### 4. Configure as Variáveis de Ambiente
+
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+
+```env
+DISCORD_TOKEN=seu_token_do_discord
+TELEGRAM_API_ID=seu_api_id
+TELEGRAM_API_HASH=seu_api_hash
+TELEGRAM_CHANNELS=canal1,canal2
+DISCORD_CHANNEL_IDS=123456789,987654321
 ```
+
+**Como obter as credenciais:**
+
+- **Discord Token**: [Discord Developer Portal](https://discord.com/developers/applications) > Seu App > Bot > Token
+- **Telegram API**: [Telegram API](https://my.telegram.org/apps) > API development tools
+
+### 5. Execute o Bot
+
+```bash
 python main.py
 ```
 
-O bot será iniciado e tentará conectar automaticamente ao Telegram se já existir uma sessão válida. Caso contrário, você precisará fazer login usando o comando `/login` no Discord.
+O bot inicializará ambos os serviços (Discord e Telegram) em paralelo. Se já houver uma sessão válida do Telegram, a conexão será automática.
 
-## Passo 5: Login no Telegram
+## Uso
 
-O login no Telegram é feito através do Discord usando QR code:
+### Login no Telegram
 
-1. No servidor do Discord onde o bot está instalado, execute o comando `/login`
-2. O bot enviará uma imagem com um QR code (privada, apenas você pode ver)
-3. Abra o aplicativo Telegram no seu celular
-4. Vá em **Configurações** > **Dispositivos** > **Conectar dispositivo por QR code**
-5. Escaneie o QR code exibido no Discord
-6. Se sua conta tiver autenticação de dois fatores (2FA), use o comando `/login senha:sua_senha` para fornecer a senha
+O login é feito através do Discord usando QR code:
 
-**Notas importantes:**
-- O comando `/login` é privado (ephemeral) - apenas você pode ver o QR code e as mensagens
-- Se você já estiver logado, o bot informará seu status atual
-- Se o QR code expirar, execute `/login` novamente para gerar um novo
-- O bot tentará reconectar automaticamente na próxima inicialização se a sessão ainda for válida
+1. Execute o comando `/telegram login` no Discord
+2. Escaneie o QR code exibido com o app Telegram
+3. Se tiver 2FA, use `/telegram login senha:sua_senha`
 
-## Passo 6: Verificação de Novas Mensagens
+### Comandos Disponíveis
 
-No servidor do Discord onde o bot está instalado, verifique se o bot está online. Você verá o status do bot como online.
-Verifique as novas mensagens no Telegram. Se houver novas mensagens, o bot as enviará para o servidor do Discord.
-Teste os comandos do bot no servidor do Discord para garantir que tudo esteja funcionando corretamente.
+Todos os comandos são **slash commands** (barra `/`):
 
-## Comandos Disponíveis
+- `/info` - Informações sobre o bot
+- `/telegram login` - Fazer login no Telegram via QR code
+- `/lembretes` - Gerenciar lembretes (ver subcomandos)
 
-Todos os comandos estão dispoíveis usando barra (slash) no Discord. Procure pelo bot na lateral esquerda da barra de comandos. Alguns deles são privados e apenas o dono do bot pode usar. Como `/status` para verificar o status do bot.
+Alguns comandos são privados e apenas o dono do bot pode usar.
+
+### Hot-reload durante Desenvolvimento
+
+Durante o desenvolvimento, as extensões (cogs) são recarregadas automaticamente quando você salva alterações nos arquivos. Isso acelera significativamente o ciclo de desenvolvimento.
+
+## Estrutura do Projeto
+
+```
+discord_telegram_bot/
+├── src/
+│   ├── cogs/             # Extensões modulares (comandos)
+│   ├── services/
+│   │   ├── discord/      # Cliente Discord
+│   │   ├── integration/  # Integração entre Discord e Telegram
+│   │   └── telegram/     # Cliente Telegram
+│   ├── shared/           # Código compartilhado
+│   └── config.py         # Configuração e inicialização
+├── main.py               # Ponto de entrada
+└── requirements.txt      # Dependências
+```
+
+## Desenvolvimento
+
+### Adicionando Novos Comandos
+
+1. Crie um novo arquivo em `src/cogs/` ou adicione ao cog existente
+2. Use `commands.GroupCog` para organizar comandos em grupos
+3. O hot-reload detectará automaticamente as mudanças
+
+### Modificando o Filtro de Mensagens
+
+O filtro está em `src/services/integration/forwarder.py`. Por padrão, apenas mensagens com links são encaminhadas. Modifique o método `_filter()` para alterar o comportamento.
+
+## Referências
+
+Este projeto foi desenvolvido seguindo as melhores dicas do [Discord.py Masterclass Guide](https://fallendeity.github.io/discord.py-masterclass/), que fornece diretrizes sobre arquitetura, organização de código e padrões de design para bots Discord.
+
+## Mantenedores
+
+- [@jhgaldino](https://github.com/jhgaldino) - Idealização e desenvolvimento
+- [@DanGM96](https://github.com/DanGM96) - Desenvolvimento, arquitetura e contribuições
