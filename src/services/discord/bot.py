@@ -100,30 +100,32 @@ class Bot(commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             return
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"Missing required argument: {error.param.name}")
+            await ctx.send(f"Argumento obrigatório: {error.param.name}")
         elif isinstance(error, commands.BadArgument):
-            await ctx.send(f"Bad argument: {error}")
+            await ctx.send(f"Argumento inválido: {error}")
         else:
-            self.logger.error(f"Unhandled error: {error}", exc_info=error)
-            await ctx.send(f"An error occurred: {error}")
+            self.logger.error(f"Unhandled command error: {error}", exc_info=error)
+            await ctx.send(f"Ocorreu um erro ao executar o comando.")
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
     ) -> None:
         """Global error handler for slash commands."""
-        if isinstance(error, app_commands.MissingPermissions):
+        if isinstance(
+            error, (app_commands.MissingPermissions, app_commands.CheckFailure)
+        ):
             await self._send_interaction_message(
-                interaction, "You don't have permission to use this command."
+                interaction, "Você não tem permissão para usar este comando."
             )
         elif isinstance(error, app_commands.CommandOnCooldown):
             await self._send_interaction_message(
                 interaction,
-                f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.",
+                f"Este comando está em cooldown. Tente novamente em {error.retry_after:.2f} segundos.",
             )
         else:
             self.logger.error(f"Unhandled app command error: {error}", exc_info=error)
             await self._send_interaction_message(
-                interaction, f"An error occurred: {error}"
+                interaction, f"Ocorreu um erro ao executar o comando."
             )
 
     async def close(self) -> None:

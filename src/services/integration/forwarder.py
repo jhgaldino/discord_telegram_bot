@@ -8,7 +8,7 @@ from discord.channel import PartialMessageable
 from telethon import events
 
 from src.config import get_bot, get_client
-from src.shared import reminders
+from src.database import reminders
 from src.shared.utils import format_list_to_markdown
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class MessageForwarder:
                     if discord_channel:
                         tasks.append(discord_channel.send(text_to_channel))
 
-                reminder_by_user = reminders.find_by_user_in_text(text_to_channel)
+                reminder_by_user = reminders.find_matching_reminders(text_to_channel)
                 for user_id, reminder_list in reminder_by_user.items():
                     markdown_list = format_list_to_markdown(reminder_list)
                     text_to_user = (

@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from src.config import get_bot, get_client
 from src.services.telegram.errors import AUTH_ERRORS
+from src.shared.permissions import admin_only
 
 
 class Info(commands.GroupCog, name="info", description="Bot information commands"):
@@ -92,15 +93,9 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="status", description="Mostra vários status do bot")
+    @admin_only()
     async def status(self, interaction: discord.Interaction) -> None:
         """Show bot status including Telegram connection."""
-        # Check if user is bot owner
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Você não tem permissão para usar este comando.", ephemeral=True
-            )
-            return
-
         await interaction.response.defer(ephemeral=True)
 
         status_lines = []
@@ -144,21 +139,6 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
 
         message = "\n".join(status_lines)
         await interaction.followup.send(message, ephemeral=True)
-
-    def _is_owner(self, interaction: discord.Interaction) -> bool:
-        """Check if the user is the bot owner."""
-        bot = get_bot()
-        if bot.owner_id:
-            return interaction.user.id == bot.owner_id
-        # Fallback: check application owners
-        app = interaction.client.application
-        if app and app.owner:
-            if isinstance(app.owner, discord.Team):
-                return interaction.user.id in [
-                    member.id for member in app.owner.members
-                ]
-            return interaction.user.id == app.owner.id
-        return False
 
 
 async def setup(bot: commands.Bot) -> None:

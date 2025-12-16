@@ -10,19 +10,7 @@ from discord.ext import commands
 from src.config import get_bot, get_client
 from src.services.telegram import qr as telegram
 from src.services.telegram.errors import AUTH_ERRORS, PASSWORD_ERRORS, TIMEOUT_ERRORS
-
-
-def is_owner(bot: commands.Bot, interaction: discord.Interaction) -> bool:
-    """Check if the user is the bot owner."""
-    if bot.owner_id:
-        return interaction.user.id == bot.owner_id
-    # Fallback: check application owners
-    app = interaction.client.application
-    if app and app.owner:
-        if isinstance(app.owner, discord.Team):
-            return interaction.user.id in [member.id for member in app.owner.members]
-        return interaction.user.id == app.owner.id
-    return False
+from src.shared.permissions import admin_only
 
 
 class Telegram(
@@ -39,19 +27,13 @@ class Telegram(
     @app_commands.describe(
         senha="Senha 2FA (opcional, apenas se sua conta tiver autenticação de dois fatores)"
     )
+    @admin_only()
     async def login(
         self, interaction: discord.Interaction, senha: str | None = None
     ) -> None:
         """Login to Telegram via QR code."""
         bot = get_bot()
         telegram_manager = get_client()
-
-        # Check if user is bot owner
-        if not is_owner(bot, interaction):
-            await interaction.response.send_message(
-                "Você não tem permissão para usar este comando.", ephemeral=True
-            )
-            return
         if not telegram_manager:
             await interaction.response.send_message(
                 "Telegram client não está configurado.", ephemeral=True
