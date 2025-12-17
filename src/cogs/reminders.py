@@ -151,7 +151,7 @@ class Reminders(
                 message_parts.append(f"**{escaped_group}:** *(vazio)*")
                 continue
 
-            escaped_texts = [discord.utils.escape_markdown(text) for text in texts]
+            escaped_texts = [self._sanitize_and_escape_text(text) for text in texts]
             texts_list = format_list_to_markdown(escaped_texts)
             message_parts.append(f"**{escaped_group}:**\n{texts_list}")
 
