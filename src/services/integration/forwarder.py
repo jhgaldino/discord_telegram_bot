@@ -5,10 +5,11 @@ import logging
 import re
 
 from discord.channel import PartialMessageable
-from telethon import events
+from telethon.events import NewMessage
+from telethon.tl.custom import Message
 
 from src.config import get_bot, get_client
-from src.database import reminders
+from src.database import reminder_groups
 from src.shared.utils import format_list_to_markdown
 
 logger = logging.getLogger(__name__)
@@ -34,15 +35,15 @@ class MessageForwarder:
         self._discord_channels: set[PartialMessageable] = set()
         self._event_handlers_registered = False
 
-    def _filter(self, event: events.NewMessage.Event) -> bool:
+    def _filter(self, event: NewMessage.Event[Message]) -> bool:
         """Filter function to check if message contains URLs."""
-        if re.search(r"https://", event.raw_text):
+        if re.search(r"https://", event.message.message):
             return True
         return False
 
-    def _format(self, event: events.NewMessage.Event) -> str:
+    def _format(self, message: Message) -> str:
         """Format Telegram message text."""
-        text = re.sub(r"\n+", "\n", event.raw_text)
+        text = re.sub(r"\n+", "\n", message.message)
         return text
 
     async def _send_dm_to_user(self, message: str, user_id: int) -> None:
@@ -62,11 +63,9 @@ class MessageForwarder:
             # Capture telegram_channel in closure to avoid late binding issue
             channel = telegram_channel
 
-            @telegram_client.client.on(
-                events.NewMessage(chats=channel, func=self._filter)
-            )
-            async def my_event_handler(event: events.NewMessage.Event) -> None:
-                text_to_channel = self._format(event)
+            @telegram_client.client.on(NewMessage(chats=channel, func=self._filter))
+            async def forward_message(event: NewMessage.Event[Message]) -> None:
+                text_to_channel = self._format(event.message)
 
                 tasks = []
 
@@ -74,12 +73,14 @@ class MessageForwarder:
                     if discord_channel:
                         tasks.append(discord_channel.send(text_to_channel))
 
-                reminder_by_user = reminders.find_matching_reminders(text_to_channel)
-                for user_id, reminder_list in reminder_by_user.items():
-                    markdown_list = format_list_to_markdown(reminder_list)
+                reminder_by_user = reminder_groups.find_matching_reminders(
+                    event.message.message
+                )
+                for user_id, group_names in reminder_by_user.items():
+                    markdown_list = format_list_to_markdown(group_names)
                     text_to_user = (
                         text_to_channel
-                        + f"\n\nVocê me pediu para te lembrar de:\n{markdown_list}"
+                        + f"\n\nVocê me pediu para te lembrar dos grupos:\n{markdown_list}"
                     )
                     tasks.append(self._send_dm_to_user(text_to_user, user_id))
 

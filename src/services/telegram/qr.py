@@ -6,6 +6,7 @@ from typing import Awaitable, Callable
 
 import qrcode
 import telethon
+from discord.utils import utcnow
 
 from src.services.telegram.errors import AUTH_ERRORS, PASSWORD_ERRORS
 
@@ -76,7 +77,7 @@ async def login(
     qr_login = await client.qr_login()
 
     expires_at = qr_login.expires
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = utcnow()
     expiration_seconds = max(1, int((expires_at - now).total_seconds()))
 
     await qr_callback(qr_login.url, expiration_seconds, expires_at)
