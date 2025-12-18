@@ -1,6 +1,5 @@
 """Permission checking utilities for Discord commands."""
 
-import logging
 from collections.abc import Callable
 from typing import Any
 

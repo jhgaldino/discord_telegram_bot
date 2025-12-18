@@ -2,7 +2,6 @@
 
 import platform
 import sys
-from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
@@ -17,12 +16,13 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
     """A cog for bot information commands."""
 
     def __init__(self) -> None:
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = discord.utils.utcnow()
 
     @app_commands.command(name="info", description="Mostra informações sobre o bot")
+    @admin_only()
     async def info(self, interaction: discord.Interaction) -> None:
         """Display bot information."""
-        uptime = datetime.now(timezone.utc) - self.start_time
+        uptime = discord.utils.utcnow() - self.start_time
         days = uptime.days
         hours, remainder = divmod(uptime.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -30,7 +30,7 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
         embed = discord.Embed(
             title="Bot Information",
             color=discord.Color.blue(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=discord.utils.utcnow(),
         )
         bot = get_bot()
         embed.add_field(name="Bot Name", value=bot.user.name, inline=True)
@@ -54,6 +54,7 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="serverinfo", description="Display server information")
+    @admin_only()
     async def serverinfo(self, interaction: discord.Interaction) -> None:
         """Display server information."""
         guild = interaction.guild
@@ -66,7 +67,7 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
         embed = discord.Embed(
             title=f"{guild.name} Information",
             color=discord.Color.green(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=discord.utils.utcnow(),
         )
         embed.add_field(name="Server Name", value=guild.name, inline=True)
         embed.add_field(name="Server ID", value=guild.id, inline=True)
