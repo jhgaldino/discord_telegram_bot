@@ -1,7 +1,5 @@
 """Message forwarder service for forwarding messages from Telegram to Discord."""
 
-from __future__ import annotations
-
 import asyncio
 import logging
 import re
