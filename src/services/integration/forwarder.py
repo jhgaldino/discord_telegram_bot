@@ -6,7 +6,7 @@ import re
 
 from discord.channel import PartialMessageable
 from telethon.events import NewMessage
-from telethon.tl.custom import Message
+from telethon.tl.types import Message
 
 from src.config import get_bot, get_client
 from src.database import reminder_groups
@@ -35,9 +35,10 @@ class MessageForwarder:
         self._discord_channels: set[PartialMessageable] = set()
         self._event_handlers_registered = False
 
-    def _filter(self, event: NewMessage.Event[Message]) -> bool:
+    def _filter(self, event: NewMessage.Event) -> bool:
         """Filter function to check if message contains URLs."""
-        if re.search(r"https://", event.message.message):
+        message: Message = event.message
+        if re.search(r"https://", message.message):
             return True
         return False
 
@@ -64,8 +65,9 @@ class MessageForwarder:
             channel = telegram_channel
 
             @telegram_client.client.on(NewMessage(chats=channel, func=self._filter))
-            async def forward_message(event: NewMessage.Event[Message]) -> None:
-                text_to_channel = self._format(event.message)
+            async def forward_message(event: NewMessage.Event) -> None:
+                message: Message = event.message
+                text_to_channel = self._format(message)
 
                 tasks = []
 
@@ -74,7 +76,7 @@ class MessageForwarder:
                         tasks.append(discord_channel.send(text_to_channel))
 
                 reminder_by_user = reminder_groups.find_matching_reminders(
-                    event.message.message
+                    message.message
                 )
                 for user_id, group_names in reminder_by_user.items():
                     markdown_list = format_list_to_markdown(group_names)
