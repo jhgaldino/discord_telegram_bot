@@ -1,8 +1,6 @@
-"""Cog loader for loading and optionally hot-reloading extensions."""
-
 import asyncio
 import logging
-import pathlib
+from pathlib import Path
 
 from watchfiles import Change, awatch
 
@@ -24,18 +22,16 @@ class CogLoader:
         self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
         self._task: asyncio.Task[None] | None = None
         self._running: bool = False
-        self.ext_dir = pathlib.Path.cwd() / "src/cogs"
+        self.ext_dir = Path.cwd() / Path("src/cogs")
 
-    def _get_path_as_extension_name(self, file: pathlib.Path) -> str:
-        """Get the extension name from a file path."""
+    def _get_path_as_extension_name(self, file: Path) -> str:
         try:
-            relative_path = file.relative_to(pathlib.Path.cwd())
+            relative_path = file.relative_to(Path.cwd())
         except ValueError:
             relative_path = file
         return ".".join(relative_path.with_suffix("").parts)
 
     async def _load_extension(self, extension_name: str) -> None:
-        """Load a single extension using discord.py's load_extension."""
         try:
             await self.bot.load_extension(extension_name)
         except commands.ExtensionNotFound:
@@ -48,7 +44,6 @@ class CogLoader:
             )
 
     async def load_all_extensions(self) -> None:
-        """Load all extensions from the cogs directory."""
         dir_name = self._get_path_as_extension_name(self.ext_dir)
         if not self.ext_dir.is_dir():
             self.logger.warning(f"Extension directory {dir_name} does not exist")
@@ -63,7 +58,6 @@ class CogLoader:
             self.logger.info(f"Loaded {extension_name}")
 
     async def _watch(self) -> None:
-        """Watch for changes in extension files using watchfiles."""
         dir_name = self._get_path_as_extension_name(self.ext_dir)
         if not self.ext_dir.is_dir():
             self.logger.error(f"Extension directory {dir_name} does not exist")
@@ -79,7 +73,7 @@ class CogLoader:
                     if not change_path.endswith(".py"):
                         continue
 
-                    file_path = pathlib.Path(change_path)
+                    file_path = Path(change_path)
                     if file_path.stem.startswith("_"):
                         continue
 

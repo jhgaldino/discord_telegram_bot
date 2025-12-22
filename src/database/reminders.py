@@ -1,7 +1,6 @@
-"""Reminder management functions using the Database class with group support."""
-
 import sqlite3
-from typing import TYPE_CHECKING, TypedDict
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from src.database import get_database
 from src.shared.utils import sanitize_text
@@ -10,9 +9,8 @@ if TYPE_CHECKING:
     from src.database import Database
 
 
-class ReminderGroup(TypedDict):
-    """Type for a reminder group with its texts."""
-
+@dataclass
+class ReminderGroup:
     group_name: str
     texts: list[str]
 
@@ -30,7 +28,6 @@ ERROR_TEXT_EXISTS = "text_exists"
 
 
 def _init_reminders_tables() -> None:
-    """Initialize reminder tables if they don't exist."""
     db = get_database()
 
     # Create reminder_groups table
@@ -77,7 +74,6 @@ def _init_reminders_tables() -> None:
 
 
 def _create_update_triggers(db: "Database") -> None:
-    """Create triggers to automatically update updated_at when texts are added/removed."""
     # Drop existing triggers if they exist (to allow re-running)
     # DROP TRIGGER IF EXISTS won't raise an exception, so no try/except needed
     db.execute("DROP TRIGGER IF EXISTS update_group_on_text_insert")
@@ -107,7 +103,6 @@ def _create_update_triggers(db: "Database") -> None:
 
 
 def _migrate_old_reminders(db: "Database") -> None:
-    """Migrate old reminders table to new group-based structure."""
     try:
         # Get all old reminders
         old_reminders = db.fetch_all(
@@ -351,8 +346,7 @@ def list_groups_by_user(
 
     result: list[ReminderGroup] = []
     for name, texts in groups.items():
-        group: ReminderGroup = {"group_name": name, "texts": texts}
-        result.append(group)
+        result.append(ReminderGroup(group_name=name, texts=texts))
     return result
 
 

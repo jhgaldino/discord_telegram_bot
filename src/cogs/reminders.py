@@ -1,11 +1,9 @@
-"""Reminders cog - Commands for managing reminder groups."""
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.database import reminder_groups
-from src.database.reminder_groups import (
+from src.database import reminders
+from src.database.reminders import (
     ERROR_ALREADY_EXISTS,
     ERROR_LIMIT_REACHED,
     ERROR_TEXT_EXISTS,
@@ -24,24 +22,19 @@ class Reminders(
     name="lembretes",
     description="Gerenciamento de lembretes",
 ):
-    """A cog for reminder group commands."""
-
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def _resolve_group_name(group: str | None, text: str) -> str:
-        """Resolve group name: use grupo if provided, otherwise use texto."""
         return group if group is not None else text
 
     @staticmethod
     def _sanitize_and_escape_text(text: str) -> str:
-        """Sanitize text (as stored in DB) and escape for Discord markdown."""
         return discord.utils.escape_markdown(sanitize_text(text))
 
     @staticmethod
     def _escape_group(group: str) -> str:
-        """Escape group name for Discord markdown."""
         return discord.utils.escape_markdown(group)
 
     @app_commands.command(
@@ -58,12 +51,11 @@ class Reminders(
         texto: str,
         grupo: str | None = None,
     ) -> None:
-        """Add a text to a reminder group."""
         # If no group specified, use the text name as group name (preserving casing)
         grupo = self._resolve_group_name(grupo, texto)
 
         # Try to ensure group exists
-        _, create_error = reminder_groups.create_group(interaction.user.id, grupo)
+        _, create_error = reminders.create_group(interaction.user.id, grupo)
         if create_error == ERROR_LIMIT_REACHED:
             await interaction.response.send_message(
                 f"Você já tem {MAX_GROUPS_PER_USER} grupos de lembretes. "
@@ -77,7 +69,7 @@ class Reminders(
             )
             return
 
-        success, add_error = reminder_groups.add_text_to_group(
+        success, add_error = reminders.add_text_to_group(
             interaction.user.id, grupo, texto
         )
 
@@ -124,11 +116,10 @@ class Reminders(
     async def list_groups(
         self, interaction: discord.Interaction, grupo: str | None = None
     ) -> None:
-        """List reminder groups for the user, optionally filtered by group name."""
         # Defer response immediately to prevent interaction timeout
         await interaction.response.defer()
 
-        groups = reminder_groups.list_groups_by_user(interaction.user.id, grupo)
+        groups = reminders.list_groups_by_user(interaction.user.id, grupo)
 
         if not groups:
             if grupo:
@@ -144,9 +135,8 @@ class Reminders(
 
         message_parts: list[str] = []
         for group in groups:
-            group_name = group["group_name"]
-            escaped_group = self._escape_group(group_name)
-            texts = group["texts"]
+            escaped_group = self._escape_group(group.group_name)
+            texts = group.texts
             if not texts:
                 message_parts.append(f"**{escaped_group}:** *(vazio)*")
                 continue
@@ -181,10 +171,9 @@ class Reminders(
         texto: str,
         grupo: str | None = None,
     ) -> None:
-        """Remove a text from a reminder group."""
         # If no group specified, use the text name as group name
         group_name = self._resolve_group_name(grupo, texto)
-        success, _, group_deleted = reminder_groups.remove_text_from_group(
+        success, _, group_deleted = reminders.remove_text_from_group(
             interaction.user.id, group_name, texto
         )
 
@@ -208,8 +197,7 @@ class Reminders(
     )
     @app_commands.describe(grupo="Nome do grupo a deletar")
     async def delete_group(self, interaction: discord.Interaction, grupo: str) -> None:
-        """Delete a reminder group."""
-        success, _ = reminder_groups.delete_group(interaction.user.id, grupo)
+        success, _ = reminders.delete_group(interaction.user.id, grupo)
 
         escaped_group = self._escape_group(grupo)
 
@@ -225,5 +213,4 @@ class Reminders(
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Setup function to add the cog to the bot."""
     await bot.add_cog(Reminders())

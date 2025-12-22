@@ -11,10 +11,7 @@ from src.services.discord.cog_loader import CogLoader
 
 
 class Bot(commands.Bot):
-    """Custom Bot class for Discord bot functionality."""
-
     def __init__(self) -> None:
-        """Initialize the bot."""
         intents = discord.Intents.default()
         intents.message_content = True
 
@@ -147,13 +144,6 @@ class Bot(commands.Bot):
         log_level: int = MISSING,
         root_logger: bool = False,
     ) -> None:
-        """
-        Run the bot.
-
-        Args:
-            token: Discord bot token
-        """
-
         # Disable discord.py's default logging to avoid duplicating logs
         super().run(
             token,

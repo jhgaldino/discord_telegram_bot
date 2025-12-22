@@ -1,14 +1,15 @@
-"""Configuration management for environment variables."""
-
 import asyncio
 import os
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
 
 from src.services.discord.bot import Bot
 from src.services.telegram.client import TelegramClientManager
-from src.shared.utils import string_to_list
+
+if TYPE_CHECKING:
+    from src.services.integration.forwarder import MessageForwarder
 
 load_dotenv()
 
@@ -20,9 +21,6 @@ class Config:
     discord_token: str
     telegram_api_id: int
     telegram_api_hash: str
-
-    telegram_channels: list[str]
-    discord_channel_ids: list[int]
 
     @staticmethod
     def _get_required_env(var_name: str) -> str:
@@ -44,22 +42,10 @@ class Config:
 
         telegram_api_hash = cls._get_required_env("TELEGRAM_API_HASH")
 
-        telegram_channels_str = os.getenv("TELEGRAM_CHANNELS", "")
-        telegram_channels = (
-            string_to_list(telegram_channels_str) if telegram_channels_str else []
-        )
-
-        discord_channel_ids_str = os.getenv("DISCORD_CHANNEL_IDS", "")
-        discord_channel_ids = [
-            int(ch) for ch in string_to_list(discord_channel_ids_str)
-        ]
-
         return cls(
             discord_token=discord_token,
             telegram_api_id=telegram_api_id,
             telegram_api_hash=telegram_api_hash,
-            telegram_channels=telegram_channels,
-            discord_channel_ids=discord_channel_ids,
         )
 
 
@@ -67,6 +53,7 @@ config = Config.from_env()
 
 _bot: Bot | None = None
 _client: TelegramClientManager | None = None
+_forwarder: MessageForwarder | None = None
 
 
 def get_bot() -> Bot:
@@ -87,6 +74,25 @@ def get_client() -> TelegramClientManager:
             "Telegram client has not been initialized yet. Call initialize() first."
         )
     return _client
+
+
+def get_forwarder() -> MessageForwarder:
+    """
+    Get the message forwarder instance.
+
+    Raises RuntimeError if forwarder has not been initialized yet.
+    """
+    if _forwarder is None:
+        raise RuntimeError(
+            "Message forwarder has not been initialized yet. Call set_forwarder() first."
+        )
+    return _forwarder
+
+
+def set_forwarder(forwarder: MessageForwarder) -> None:
+    """Set the global message forwarder instance."""
+    global _forwarder
+    _forwarder = forwarder
 
 
 async def initialize() -> None:

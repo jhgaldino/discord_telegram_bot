@@ -2,6 +2,8 @@
 import re
 import unicodedata
 
+from telethon.tl import TLObject
+
 
 def plural(count: int, singular: str, plural: str) -> str:
     if count == 1:
@@ -51,7 +53,4 @@ def sanitize_text(text: str) -> str:
 
 
 def pretty_print(obj: object) -> str:
-    lines = [obj.__class__.__name__ + ":"]
-    for key, val in vars(obj).items():
-        lines += "{}: {}".format(key, val).split("\n")
-    return "\n    ".join(lines)
+    return TLObject.pretty_format(obj, indent=0)

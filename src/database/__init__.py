@@ -1,5 +1,3 @@
-"""Database package - Database management and related functionality."""
-
 from src.database.database import Database
 
 # Global database instance

@@ -1,5 +1,3 @@
-"""Database management with proper connection handling."""
-
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -9,28 +7,15 @@ from typing import Generator
 class Database:
     """Database management class with proper connection handling."""
 
-    def __init__(self, db_path: str | Path = "database.db") -> None:
-        """
-        Initialize the database.
-
-        Args:
-            db_path: Path to the SQLite database file
-        """
+    def __init__(self, db_path: Path = Path("database.db")) -> None:
         self.db_path = Path(db_path)
         self._ensure_database_dir()
 
     def _ensure_database_dir(self) -> None:
-        """Ensure the database directory exists."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
     @contextmanager
     def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """
-        Get a database connection as a context manager.
-
-        Yields:
-            sqlite3.Connection: Database connection
-        """
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         try:

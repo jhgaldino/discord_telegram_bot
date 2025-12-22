@@ -1,12 +1,10 @@
-"""Main entrypoint for the Discord-Telegram bot."""
-
 import asyncio
 import logging
 import sys
 
 import discord.utils
 
-from src.config import config, get_bot, get_client
+from src.config import get_bot, get_client, set_forwarder
 from src.config import initialize as initialize_services
 from src.services.integration.forwarder import MessageForwarder
 
@@ -17,12 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 async def setup_forwarder() -> MessageForwarder:
-    """Setup message forwarder after services are initialized."""
-    forwarder = MessageForwarder(
-        telegram_channels=config.telegram_channels,
-        discord_channel_ids=config.discord_channel_ids,
-    )
+    """Must be called after services are initialized."""
+    forwarder = MessageForwarder()
     forwarder.start()
+    set_forwarder(forwarder)
 
     bot = get_bot()
 
@@ -34,8 +30,6 @@ async def setup_forwarder() -> MessageForwarder:
 
 
 async def cleanup_services() -> None:
-    """Cleanup Discord bot and Telegram client."""
-
     async def cleanup_bot() -> None:
         try:
             bot = get_bot()
@@ -58,7 +52,6 @@ async def cleanup_services() -> None:
 
 
 async def run_services() -> None:
-    """Run both Discord bot and Telegram client independently."""
     try:
         await initialize_services()
         await setup_forwarder()
@@ -70,7 +63,6 @@ async def run_services() -> None:
 
 
 def main() -> None:
-    """Main entrypoint."""
     try:
         logger.info("Starting application...")
         asyncio.run(run_services())

@@ -4,3 +4,5 @@ python-dotenv
 qrcode[pil]
 aiohttp
 watchfiles
+ruff
+ty
