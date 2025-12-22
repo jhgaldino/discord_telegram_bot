@@ -11,6 +11,9 @@ Bot que integra mensagens de canais do Telegram com servidores do Discord, desen
 - 🎯 **Comandos slash** modernos usando `app_commands`
 - 🛡️ **Tratamento robusto de erros** com cleanup automático de recursos
 - 📊 **Comandos de status** para monitorar o estado do bot e conexões
+- 📝 **Sistema de lembretes** com grupos e múltiplos textos por grupo
+- 🔧 **Gerenciamento de canais** via comandos Discord (adicionar/remover/listar)
+- 🎛️ **Controle de encaminhamento** por canal Telegram (ativar/desativar)
 
 ## Arquitetura
 
@@ -18,8 +21,10 @@ O projeto segue uma arquitetura modular e desacoplada:
 
 - **`src/services/discord/`** - Cliente Discord com hot-reload de cogs
 - **`src/services/telegram/`** - Cliente Telegram com autenticação QR
+- **`src/services/integration/`** - Integração entre Discord e Telegram (forwarder)
 - **`src/cogs/`** - Extensões modulares (comandos organizados por grupo)
-- **`src/shared/`** - Código compartilhado entre serviços
+- **`src/database/`** - Gerenciamento de banco de dados SQLite (canais, lembretes)
+- **`src/shared/`** - Código compartilhado entre serviços (permissões, utilitários)
 - **`src/config.py`** - Gerenciamento centralizado de configuração e inicialização
 
 ### Características Técnicas
@@ -70,14 +75,14 @@ Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 DISCORD_TOKEN=seu_token_do_discord
 TELEGRAM_API_ID=seu_api_id
 TELEGRAM_API_HASH=seu_api_hash
-TELEGRAM_CHANNELS=canal1,canal2
-DISCORD_CHANNEL_IDS=123456789,987654321
 ```
 
 **Como obter as credenciais:**
 
 - **Discord Token**: [Discord Developer Portal](https://discord.com/developers/applications) > Seu App > Bot > Token
 - **Telegram API**: [Telegram API](https://my.telegram.org/apps) > API development tools
+
+**Nota:** Os canais são gerenciados via comandos Discord após a inicialização (veja seção de comandos abaixo).
 
 ### 5. Execute o Bot
 
@@ -101,11 +106,32 @@ O login é feito através do Discord usando QR code:
 
 Todos os comandos são **slash commands** (barra `/`):
 
-- `/info` - Informações sobre o bot
-- `/telegram login` - Fazer login no Telegram via QR code
-- `/lembretes` - Gerenciar lembretes (ver subcomandos)
+#### Informações
 
-Alguns comandos são privados e apenas o dono do bot pode usar.
+- `/info` - Informações sobre o bot
+- `/serverinfo` - Informações sobre o servidor
+
+#### Telegram
+
+- `/telegram login` - Fazer login no Telegram via QR code
+
+#### Lembretes
+
+- `/lembretes adicionar` - Adicionar texto a um grupo de lembretes
+- `/lembretes listar` - Listar grupos de lembretes (opcional: filtrar por grupo)
+- `/lembretes remover` - Remover texto de um grupo
+- `/lembretes deletar` - Deletar um grupo completo
+
+#### Canais
+
+- `/canais discord adicionar` - Adicionar canal do Discord
+- `/canais discord remover` - Remover canal do Discord
+- `/canais discord listar` - Listar canais do Discord
+- `/canais telegram adicionar` - Adicionar canal do Telegram (com opção de encaminhar)
+- `/canais telegram remover` - Remover canal do Telegram
+- `/canais telegram listar` - Listar canais do Telegram
+
+**Permissões:** Comandos de canais e alguns comandos de informações requerem permissões de administrador.
 
 ### Hot-reload durante Desenvolvimento
 
@@ -117,11 +143,21 @@ Durante o desenvolvimento, as extensões (cogs) são recarregadas automaticament
 discord_telegram_bot/
 ├── src/
 │   ├── cogs/             # Extensões modulares (comandos)
+│   │   ├── channels.py   # Gerenciamento de canais
+│   │   ├── info.py       # Informações do bot/servidor
+│   │   ├── reminders.py  # Sistema de lembretes
+│   │   └── telegram.py   # Comandos do Telegram
+│   ├── database/         # Gerenciamento de banco de dados
+│   │   ├── channels.py   # Operações de canais
+│   │   ├── reminders.py  # Operações de lembretes
+│   │   └── database.py   # Classe Database
 │   ├── services/
 │   │   ├── discord/      # Cliente Discord
 │   │   ├── integration/  # Integração entre Discord e Telegram
 │   │   └── telegram/     # Cliente Telegram
 │   ├── shared/           # Código compartilhado
+│   │   ├── permissions.py # Sistema de permissões
+│   │   └── utils.py      # Utilitários
 │   └── config.py         # Configuração e inicialização
 ├── main.py               # Ponto de entrada
 └── requirements.txt      # Dependências
@@ -137,7 +173,15 @@ discord_telegram_bot/
 
 ### Modificando o Filtro de Mensagens
 
-O filtro está em `src/services/integration/forwarder.py`. Por padrão, apenas mensagens com links são encaminhadas. Modifique o método `_filter()` para alterar o comportamento.
+O filtro está em `src/services/integration/forwarder.py`. Por padrão, apenas mensagens com links são encaminhadas. Modifique o método `_filter_message_event()` para alterar o comportamento.
+
+### Gerenciando Canais
+
+Os canais são armazenados em um banco de dados SQLite (`database.db`). Use os comandos `/canais` para gerenciar canais do Discord e Telegram. Para canais do Telegram, você pode controlar se as mensagens devem ser encaminhadas para o Discord usando o parâmetro `encaminhar` ao adicionar o canal.
+
+### Sistema de Lembretes
+
+O sistema de lembretes permite criar grupos de textos que são monitorados nas mensagens do Telegram. Quando todos os textos de um grupo aparecem em uma mensagem, o usuário recebe uma notificação via DM no Discord. Use `/lembretes` para gerenciar seus grupos e textos.
 
 ## Referências
 
