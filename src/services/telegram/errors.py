@@ -1,4 +1,5 @@
 import asyncio
+
 from telethon import errors as telethon_errors
 
 # Exception groups for cleaner error handling
