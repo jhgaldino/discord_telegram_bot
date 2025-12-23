@@ -21,11 +21,10 @@ O projeto segue uma arquitetura modular e desacoplada:
 
 - **`src/services/discord/`** - Cliente Discord com hot-reload de cogs
 - **`src/services/telegram/`** - Cliente Telegram com autenticação QR
-- **`src/services/integration/`** - Integração entre Discord e Telegram (forwarder)
+- **`src/services/forwarder/`** - Encaminhamento de mensagens (funcionalidade principal)
 - **`src/cogs/`** - Extensões modulares (comandos organizados por grupo)
 - **`src/database/`** - Gerenciamento de banco de dados SQLite (canais, lembretes)
-- **`src/shared/`** - Código compartilhado entre serviços (permissões, utilitários)
-- **`src/config.py`** - Gerenciamento centralizado de configuração e inicialização
+- **`src/shared/`** - Código compartilhado entre serviços (permissões, utilitários, serviços)
 
 ### Características Técnicas
 
@@ -36,35 +35,39 @@ O projeto segue uma arquitetura modular e desacoplada:
 
 ## Requisitos
 
-- Python 3.10 ou superior
+- Python 3.14 ou superior
+- [uv](https://github.com/astral-sh/uv) (gerenciador de dependências e ambiente)
 - Conta no Discord com bot criado
 - Conta no Telegram com API credentials
 
 ## Instalação
 
-### 1. Clone o Repositório
+### 1. Instale o uv
+
+```bash
+# Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Ou via pip
+pip install uv
+```
+
+### 2. Clone o Repositório
 
 ```bash
 git clone <repository-url>
 cd discord_telegram_bot
 ```
 
-### 2. Configure o Ambiente Virtual
-
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
 ### 3. Instale as Dependências
 
+Instale as dependências do projeto e do ambiente de desenvolvimento.
+
 ```bash
-pip install -r requirements.txt
+uv sync --extra dev
 ```
 
 ### 4. Configure as Variáveis de Ambiente
@@ -72,6 +75,7 @@ pip install -r requirements.txt
 Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 
 ```env
+ENVIRONMENT=development  # ou "production"
 DISCORD_TOKEN=seu_token_do_discord
 TELEGRAM_API_ID=seu_api_id
 TELEGRAM_API_HASH=seu_api_hash
@@ -87,7 +91,7 @@ TELEGRAM_API_HASH=seu_api_hash
 ### 5. Execute o Bot
 
 ```bash
-python main.py
+uv run main.py
 ```
 
 O bot inicializará ambos os serviços (Discord e Telegram) em paralelo. Se já houver uma sessão válida do Telegram, a conexão será automática.
@@ -153,23 +157,55 @@ discord_telegram_bot/
 │   │   └── database.py   # Classe Database
 │   ├── services/
 │   │   ├── discord/      # Cliente Discord
-│   │   ├── integration/  # Integração entre Discord e Telegram
+│   │   ├── forwarder/    # Encaminhamento de mensagens
 │   │   └── telegram/     # Cliente Telegram
 │   ├── shared/           # Código compartilhado
 │   │   ├── permissions.py # Sistema de permissões
+│   │   ├── services.py   # Registro de serviços
 │   │   └── utils.py      # Utilitários
-│   └── config.py         # Configuração e inicialização
+│   └── config.py         # Carregamento de variáveis de ambiente
 ├── main.py               # Ponto de entrada
-└── requirements.txt      # Dependências
+├── pyproject.toml        # Configuração do projeto e dependências
+├── uv.lock               # Lockfile das dependências (gerado pelo uv)
+└── .venv/                # Ambiente virtual (gerado pelo uv)
 ```
 
 ## Desenvolvimento
+
+### Configuração do Ambiente de Desenvolvimento
+
+O projeto usa variáveis de ambiente para controlar o comportamento:
+
+- **`ENVIRONMENT=development`**: Habilita logs detalhados (INFO) e hot-reload de cogs
+- **`ENVIRONMENT=production`**: Usa logs mínimos (WARNING) e desabilita hot-reload
+
+### Comandos Úteis do uv
+
+```bash
+# Instalar/atualizar dependências
+uv sync
+
+# Instalar dependências de desenvolvimento
+uv sync --extra dev
+
+# Executar comandos no ambiente virtual
+uv run python main.py
+uv run ruff check .
+uv run ruff format .
+uv run ty check
+
+# Adicionar nova dependência
+uv add nome-do-pacote
+
+# Adicionar dependência de desenvolvimento
+uv add --dev nome-do-pacote
+```
 
 ### Adicionando Novos Comandos
 
 1. Crie um novo arquivo em `src/cogs/` ou adicione ao cog existente
 2. Use `commands.GroupCog` para organizar comandos em grupos
-3. O hot-reload detectará automaticamente as mudanças
+3. O hot-reload detectará automaticamente as mudanças (apenas em modo development)
 
 ### Modificando o Filtro de Mensagens
 

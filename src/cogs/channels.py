@@ -1,15 +1,21 @@
 import logging
+import sqlite3
 
 import discord
+import telethon.errors
 from discord import app_commands
 from discord.ext import commands
 from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
 from telethon.tl.types import Channel as TelegramChannel
 from telethon.utils import get_input_channel
 
-from src.config import get_client, get_forwarder
 from src.database import channels as channel_db
+from src.shared.exceptions import (
+    ChannelAlreadyExistsError,
+    ChannelNotFoundError,
+)
 from src.shared.permissions import admin_only
+from src.shared.services import services
 from src.shared.utils import plural
 
 logger = logging.getLogger(__name__)
@@ -44,19 +50,18 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
             )
             return
 
-        success, error = channel_db.add_discord_channel(canal.id)
-
-        if success:
-            get_forwarder().reload_channels()
-
+        try:
+            channel_db.add_discord_channel(canal.id)
+            services.forwarder.reload_channels()
             await interaction.response.send_message(
                 f"Adicionei o canal do Discord {canal.mention}"
             )
-        elif error == "already_exists":
+        except ChannelAlreadyExistsError:
             await interaction.response.send_message(
                 f"O canal {canal.mention} já está na lista"
             )
-        else:
+        except sqlite3.DatabaseError as e:
+            logger.error(f"Database error adding Discord channel: {e}", exc_info=e)
             await interaction.response.send_message(
                 "Erro ao adicionar o canal. Tente novamente."
             )
@@ -67,19 +72,18 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     async def remove_discord(
         self, interaction: discord.Interaction, canal: discord.abc.GuildChannel
     ) -> None:
-        success, error = channel_db.remove_discord_channel(canal.id)
-
-        if success:
-            get_forwarder().reload_channels()
-
+        try:
+            channel_db.remove_discord_channel(canal.id)
+            services.forwarder.reload_channels()
             await interaction.response.send_message(
                 f"Removi o canal do Discord {canal.mention}"
             )
-        elif error == "not_found":
+        except ChannelNotFoundError:
             await interaction.response.send_message(
                 f"O canal {canal.mention} não está na lista"
             )
-        else:
+        except sqlite3.DatabaseError as e:
+            logger.error(f"Database error removing Discord channel: {e}", exc_info=e)
             await interaction.response.send_message(
                 "Erro ao remover o canal. Tente novamente."
             )
@@ -123,8 +127,7 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     async def add_telegram(
         self, interaction: discord.Interaction, canal: str, encaminhar: bool = True
     ) -> None:
-        telegram = get_client().client
-        channel = await telegram.get_entity(canal)
+        channel = await services.client.get_entity(canal)
         if not isinstance(channel, TelegramChannel):
             await interaction.response.send_message(
                 f"**{canal}** não é um canal", suppress_embeds=True
@@ -135,44 +138,45 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
         username = channel.username
         if not username:
             await interaction.response.send_message(
-                f"Apenas canais públicos podem ser adicionados."
+                "Apenas canais públicos podem ser adicionados."
             )
             return
 
-        # Join channel if not already joined
+        # Join channel if not already joined, archive it to keep it hidden
         if channel.left:
             input_channel = get_input_channel(channel)
             try:
-                await telegram(JoinChannelRequest(input_channel))
-                await telegram.edit_folder(
-                    input_channel, 1
-                )  # Archive channel to keep it hidden
-            except Exception as e:
+                await services.client(JoinChannelRequest(input_channel))
+                await services.client.edit_folder(input_channel, 1)
+            except (
+                telethon.errors.RPCError,
+                ConnectionError,
+                TimeoutError,
+            ) as e:
+                logger.warning(f"Failed to join Telegram channel: {e}", exc_info=e)
                 await interaction.response.send_message(
-                    f"Não foi possível entrar no canal, tente novamente mais tarde."
+                    "Não foi possível entrar no canal, tente novamente mais tarde."
                 )
                 return
 
-        success, error = channel_db.add_telegram_channel(
-            channel.id, username, encaminhar
-        )
         channel_url = self._get_telegram_url_markdown(username)
 
-        if success:
-            get_forwarder().reload_channels()
-
+        try:
+            channel_db.add_telegram_channel(channel.id, username, encaminhar)
+            services.forwarder.reload_channels()
             await interaction.response.send_message(
                 f"Adicionei o canal do Telegram {channel_url}",
                 suppress_embeds=True,
             )
-        elif error == "already_exists":
+        except ChannelAlreadyExistsError:
             await interaction.response.send_message(
                 f"O canal {channel_url} já está na lista",
                 suppress_embeds=True,
             )
-        else:
+        except sqlite3.DatabaseError as e:
+            logger.error(f"Database error adding Telegram channel: {e}", exc_info=e)
             await interaction.response.send_message(
-                "Erro ao adicionar o canal. Tente novamente."
+                "Erro ao adicionar o canal. Tente novamente.",
             )
 
     @telegram_group.command(name="remover", description="Remove um canal do Telegram")
@@ -181,51 +185,51 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     async def remove_telegram(
         self, interaction: discord.Interaction, canal: str
     ) -> None:
-        telegram = get_client().client
-        channel = await telegram.get_entity(canal)
+        channel = await services.client.get_entity(canal)
         if not isinstance(channel, TelegramChannel):
             await interaction.response.send_message(
                 f"**{canal}** não é um canal", suppress_embeds=True
             )
             return
 
-        # Check if channel exists in database first
-        success, error = channel_db.remove_telegram_channel(channel.id)
-
-        if error == "not_found":
-            escaped_channel = self._escape_channel(canal)
-            await interaction.response.send_message(
-                f"O canal **{escaped_channel}** não está na lista", suppress_embeds=True
-            )
-            return
-
-        if not success:
-            await interaction.response.send_message(
-                "Erro ao remover o canal. Tente novamente."
-            )
-            return
-
-        get_forwarder().reload_channels()
-
-        # Leave channel if joined
-        if not channel.left:
-            input_channel = get_input_channel(channel)
-            try:
-                await telegram(LeaveChannelRequest(input_channel))
-            except Exception as e:
-                logger.warning(f"Error leaving Telegram channel", exc_info=e)
-
         # Use username if available, otherwise use escaped channel identifier
         username = channel.username
         if username:
             channel_url = self._get_telegram_url_markdown(username)
         else:
-            channel_url = f"**{self._escape_channel(canal)}**"
+            escaped_channel = self._escape_channel(canal)
+            channel_url = f"**{escaped_channel}**"
 
-        await interaction.response.send_message(
-            f"Removi o canal do Telegram {channel_url}",
-            suppress_embeds=True,
-        )
+        try:
+            channel_db.remove_telegram_channel(channel.id)
+            services.forwarder.reload_channels()
+
+            # Leave channel if joined
+            if not channel.left:
+                input_channel = get_input_channel(channel)
+                try:
+                    await services.client(LeaveChannelRequest(input_channel))
+                except (
+                    telethon.errors.RPCError,
+                    ConnectionError,
+                    TimeoutError,
+                ) as e:
+                    logger.warning(f"Error leaving Telegram channel: {e}", exc_info=e)
+
+            await interaction.response.send_message(
+                f"Removi o canal do Telegram {channel_url}",
+                suppress_embeds=True,
+            )
+        except ChannelNotFoundError:
+            await interaction.response.send_message(
+                f"O canal {channel_url} não está na lista", suppress_embeds=True
+            )
+        except sqlite3.DatabaseError as e:
+            logger.error(f"Database error removing Telegram channel: {e}", exc_info=e)
+            await interaction.response.send_message(
+                "Erro ao remover o canal. Tente novamente.",
+                suppress_embeds=True,
+            )
 
     @telegram_group.command(
         name="listar", description="Lista todos os canais do Telegram"

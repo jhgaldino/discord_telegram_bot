@@ -2,13 +2,14 @@ import asyncio
 import datetime
 import io
 import sys
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from contextlib import suppress
 
 import qrcode
 import telethon
 from discord.utils import utcnow
 
-from src.services.telegram.errors import AUTH_ERRORS, PASSWORD_ERRORS
+from src.services.telegram.exceptions import AUTH_ERRORS, PASSWORD_ERRORS
 
 # Type aliases for callback functions
 QRCallback = Callable[[str, int, datetime.datetime], Awaitable[None]]
@@ -57,11 +58,9 @@ async def login(
         try:
             await client.connect()
         except AUTH_ERRORS:
-            try:
+            with suppress(Exception):
                 await client.disconnect()
-            except Exception:
-                pass
-        except Exception:
+        except (ConnectionError, TimeoutError):
             raise
 
     try:
@@ -95,24 +94,24 @@ async def login(
         except ValueError:
             raise
         except Exception as e:
-            raise ValueError(f"Erro ao obter senha: {str(e)}")
+            raise ValueError(f"Error getting password: {str(e)}") from e
 
         if not password:
-            raise ValueError("Senha 2FA necessária")
+            raise ValueError(
+                "Telegram Two-Factor Authentication password required."
+            ) from None
 
         try:
             await client.sign_in(password=password)
         except PASSWORD_ERRORS:
             raise
-    except (asyncio.TimeoutError, asyncio.CancelledError) as e:
+    except (TimeoutError, asyncio.CancelledError) as e:
         # Check if user scanned QR during timeout
         if await client.is_user_authorized():
             return True
 
-        try:
+        with suppress(Exception):
             await expired_callback()
-        except Exception:
-            pass
 
         if isinstance(e, asyncio.CancelledError):
             try:
@@ -123,9 +122,7 @@ async def login(
         raise
 
     if not await client.is_user_authorized():
-        raise RuntimeError(
-            "Falha no login - usuário não autorizado após escanear QR code"
-        )
+        raise RuntimeError("Login failed. User not authorized after scanning QR code")
 
     await success_callback()
     return True

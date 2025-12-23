@@ -15,7 +15,7 @@ class CogLoader:
     def __init__(
         self,
         bot: commands.Bot,
-        hot_reload: bool = True,
+        hot_reload: bool = False,
     ) -> None:
         self.bot: commands.Bot = bot
         self.hot_reload: bool = hot_reload

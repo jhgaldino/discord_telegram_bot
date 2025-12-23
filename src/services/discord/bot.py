@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from contextlib import suppress
 
 import aiohttp
 
@@ -7,6 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.utils import MISSING
+from src.config import config
 from src.services.discord.cog_loader import CogLoader
 
 
@@ -26,7 +27,7 @@ class Bot(commands.Bot):
         self._logged_in: bool = False
 
     @classmethod
-    async def create_and_initialize(cls, token: str) -> "Bot":
+    async def create_and_initialize(cls, token: str) -> Bot:
         """
         Create and initialize a Bot instance by logging in.
 
@@ -37,29 +38,21 @@ class Bot(commands.Bot):
             raise ValueError("Discord token is required")
 
         bot = cls()
-        try:
-            await bot.login(token)
-            bot._logged_in = True
-            bot.logger.info("Discord bot initialized and logged in")
-            return bot
-        except Exception as e:
-            bot.logger.error(f"Failed to initialize Discord bot: {e}")
-            raise RuntimeError(f"Failed to initialize Discord bot: {e}") from e
+        await bot.login(token)
+        bot._logged_in = True
+        bot.logger.info("Discord bot initialized and logged in")
+        return bot
 
     async def _send_interaction_message(
         self, interaction: discord.Interaction, message: str, ephemeral: bool = True
     ) -> None:
-        """Helper to send a message to an interaction, handling response state."""
+        """Send a message to an interaction, handling both response and followup."""
         if interaction.response.is_done():
-            try:
+            with suppress(discord.HTTPException, discord.InteractionResponded):
                 await interaction.followup.send(message, ephemeral=ephemeral)
-            except Exception:
-                pass
         else:
-            try:
+            with suppress(discord.HTTPException, discord.InteractionResponded):
                 await interaction.response.send_message(message, ephemeral=ephemeral)
-            except Exception:
-                pass
 
     async def setup_hook(self) -> None:
         """Called when the bot is starting up."""
@@ -79,7 +72,7 @@ class Bot(commands.Bot):
                 return
             await self.on_app_command_error(interaction, error)
 
-        self._loader = CogLoader(bot=self, hot_reload=True)
+        self._loader = CogLoader(bot=self, hot_reload=config.is_development)
         await self._loader.start()
 
     async def on_ready(self) -> None:
@@ -97,12 +90,12 @@ class Bot(commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             return
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"Argumento obrigatório: {error.param.name}")
+            await ctx.send(f"Argumento obrigatório faltando: {error.param.name}")
         elif isinstance(error, commands.BadArgument):
             await ctx.send(f"Argumento inválido: {error}")
         else:
             self.logger.error(f"Unhandled command error: {error}", exc_info=error)
-            await ctx.send(f"Ocorreu um erro ao executar o comando.")
+            await ctx.send("Ocorreu um erro ao executar o comando.")
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
@@ -115,18 +108,18 @@ class Bot(commands.Bot):
                 interaction, "Você não tem permissão para usar este comando."
             )
         elif isinstance(error, app_commands.CommandOnCooldown):
+            retry = error.retry_after
             await self._send_interaction_message(
                 interaction,
-                f"Este comando está em cooldown. Tente novamente em {error.retry_after:.2f} segundos.",
+                f"Este comando está em cooldown. Tente novamente em {retry:.2f} segundos.",
             )
         else:
             self.logger.error(f"Unhandled app command error: {error}", exc_info=error)
             await self._send_interaction_message(
-                interaction, f"Ocorreu um erro ao executar o comando."
+                interaction, "Ocorreu um erro ao executar o comando."
             )
 
     async def close(self) -> None:
-        """Clean up resources when the bot is closing."""
         if self._loader:
             await self._loader.stop()
 
@@ -139,7 +132,7 @@ class Bot(commands.Bot):
         token: str,
         *,
         reconnect: bool = True,
-        log_handler: Optional[logging.Handler] = MISSING,
+        log_handler: logging.Handler | None = MISSING,
         log_formatter: logging.Formatter = MISSING,
         log_level: int = MISSING,
         root_logger: bool = False,

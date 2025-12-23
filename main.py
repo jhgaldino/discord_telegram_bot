@@ -1,52 +1,57 @@
 import asyncio
 import logging
 import sys
+from contextlib import suppress
 
 import discord.utils
 
-from src.config import get_bot, get_client, set_forwarder
-from src.config import initialize as initialize_services
-from src.services.integration.forwarder import MessageForwarder
+from src.config import config
+from src.services.discord.bot import Bot
+from src.services.forwarder.forwarder import MessageForwarder
+from src.services.telegram.client import TelegramClient
+from src.shared.exceptions import ServiceNotInitializedError
+from src.shared.services import services
 
-# Configure our own logger to look like the discord.py logger because it's cool
-discord.utils.setup_logging(level=logging.INFO)
+# Configure logging based on environment
+log_level = logging.INFO if config.is_development else logging.WARNING
+discord.utils.setup_logging(level=log_level)
 
 logger = logging.getLogger(__name__)
 
 
-async def setup_forwarder() -> MessageForwarder:
-    """Must be called after services are initialized."""
+async def initialize_services() -> None:
+    """Initialize all services: Discord bot, Telegram client, and message forwarder."""
+    bot, client = await asyncio.gather(
+        Bot.create_and_initialize(config.discord_token),
+        TelegramClient.create_and_connect(
+            api_id=config.telegram_api_id,
+            api_hash=config.telegram_api_hash,
+        ),
+    )
+    services.bot = bot
+    services.client = client
+
+    # Setup forwarder (main application functionality)
     forwarder = MessageForwarder()
     forwarder.start()
-    set_forwarder(forwarder)
-
-    bot = get_bot()
+    services.forwarder = forwarder
 
     async def on_ready_handler() -> None:
         await forwarder.on_bot_ready()
 
-    bot.add_listener(on_ready_handler, "on_ready")
-    return forwarder
+    services.bot.add_listener(on_ready_handler, "on_ready")
 
 
 async def cleanup_services() -> None:
+    """Cleanup all services gracefully, ignoring errors if services aren't initialized."""
+
     async def cleanup_bot() -> None:
-        try:
-            bot = get_bot()
-            await bot.close()
-        except RuntimeError:
-            pass
-        except Exception as e:
-            logger.error(f"Error closing bot: {e}", exc_info=e)
+        with suppress(ServiceNotInitializedError, AssertionError):
+            await services.bot.close()
 
     async def cleanup_client() -> None:
-        try:
-            telegram_client = get_client()
-            await telegram_client.disconnect()
-        except RuntimeError:
-            pass
-        except Exception as e:
-            logger.error(f"Error disconnecting Telegram client: {e}", exc_info=e)
+        with suppress(ServiceNotInitializedError, AssertionError):
+            await services.client.disconnect()
 
     await asyncio.gather(cleanup_bot(), cleanup_client(), return_exceptions=True)
 
@@ -54,10 +59,7 @@ async def cleanup_services() -> None:
 async def run_services() -> None:
     try:
         await initialize_services()
-        await setup_forwarder()
-
-        bot = get_bot()
-        await bot.connect()  # Blocks until the bot is closed
+        await services.bot.connect()  # Blocks until the bot is closed
     finally:
         await cleanup_services()
 

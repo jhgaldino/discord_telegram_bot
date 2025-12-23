@@ -1,5 +1,3 @@
-"""Info cog - Bot information commands."""
-
 import platform
 import sys
 
@@ -7,141 +5,90 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.config import get_bot, get_client
-from src.services.telegram.errors import AUTH_ERRORS
+from src.services.telegram.exceptions import AUTH_ERRORS
 from src.shared.permissions import admin_only
+from src.shared.services import services
 
 
 class Info(commands.GroupCog, name="info", description="Bot information commands"):
-    """A cog for bot information commands."""
-
     def __init__(self) -> None:
         self.start_time = discord.utils.utcnow()
 
-    @app_commands.command(name="info", description="Mostra informações sobre o bot")
+    @app_commands.command(name="bot", description="Mostra informações sobre o bot")
     @admin_only()
     async def info(self, interaction: discord.Interaction) -> None:
-        """Display bot information."""
         uptime = discord.utils.utcnow() - self.start_time
         days = uptime.days
         hours, remainder = divmod(uptime.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
 
         embed = discord.Embed(
-            title="Bot Information",
+            title="Informações do Bot",
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow(),
         )
-        bot = get_bot()
-        embed.add_field(name="Bot Name", value=bot.user.name, inline=True)
-        embed.add_field(name="Bot ID", value=bot.user.id, inline=True)
-        embed.add_field(name="Servers", value=len(bot.guilds), inline=True)
-        embed.add_field(name="Users", value=len(bot.users), inline=True)
+        embed.add_field(name="Nome do Bot", value=services.bot.user.name, inline=True)
+        embed.add_field(name="ID do Bot", value=services.bot.user.id, inline=True)
         embed.add_field(
-            name="Uptime",
+            name="Latência",
+            value=f"{round(services.bot.latency * 1000)}ms",
+            inline=True,
+        )
+        embed.add_field(name="Servidores", value=len(services.bot.guilds), inline=True)
+        embed.add_field(name="Usuários", value=len(services.bot.users), inline=True)
+        embed.add_field(
+            name="Tempo Online",
             value=f"{days}d {hours}h {minutes}m {seconds}s",
             inline=True,
         )
         embed.add_field(
-            name="Python Version", value=sys.version.split()[0], inline=True
+            name="Versão do Python", value=sys.version.split()[0], inline=True
         )
         embed.add_field(
-            name="discord.py Version", value=discord.__version__, inline=True
+            name="Versão do discord.py", value=discord.__version__, inline=True
         )
-        embed.add_field(name="Platform", value=platform.system(), inline=True)
-        embed.set_thumbnail(url=bot.user.display_avatar.url)
+        embed.add_field(name="Plataforma", value=platform.system(), inline=True)
+        embed.set_thumbnail(url=services.bot.user.display_avatar.url)
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="serverinfo", description="Display server information")
+    @app_commands.command(
+        name="telegram", description="Mostra informações sobre o Telegram"
+    )
     @admin_only()
-    async def serverinfo(self, interaction: discord.Interaction) -> None:
-        """Display server information."""
-        guild = interaction.guild
-        if not guild:
-            await interaction.response.send_message(
-                "This command can only be used in a server.", ephemeral=True
+    async def telegram(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        # Telegram connection status
+        is_connected = services.client.is_connected()
+        if not is_connected:
+            await interaction.followup.send(
+                "❌ **Telegram:** Desconectado", ephemeral=True
             )
             return
 
-        embed = discord.Embed(
-            title=f"{guild.name} Information",
-            color=discord.Color.green(),
-            timestamp=discord.utils.utcnow(),
-        )
-        embed.add_field(name="Server Name", value=guild.name, inline=True)
-        embed.add_field(name="Server ID", value=guild.id, inline=True)
-        embed.add_field(
-            name="Owner",
-            value=guild.owner.mention if guild.owner else "Unknown",
-            inline=True,
-        )
-        embed.add_field(name="Members", value=guild.member_count, inline=True)
-        embed.add_field(
-            name="Channels",
-            value=len(guild.channels),
-            inline=True,
-        )
-        embed.add_field(name="Roles", value=len(guild.roles), inline=True)
-        embed.add_field(
-            name="Created",
-            value=guild.created_at.strftime("%Y-%m-%d"),
-            inline=True,
-        )
-        if guild.icon:
-            embed.set_thumbnail(url=guild.icon.url)
+        status_lines: list[str] = []
+        status_lines.append("✅ **Telegram:** Conectado")
 
-        await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(name="status", description="Mostra vários status do bot")
-    @admin_only()
-    async def status(self, interaction: discord.Interaction) -> None:
-        """Show bot status including Telegram connection."""
-        await interaction.response.defer(ephemeral=True)
-
-        status_lines = []
-
-        bot = get_bot()
-        telegram_manager = get_client()
-
-        # Discord bot status
-        status_lines.append(f"📊 **Latência:** {round(bot.latency * 1000)}ms")
-        status_lines.append("✅ **Discord Bot:** Online")
-
-        # Telegram connection status
+        # Check authentication
         try:
-            is_connected = telegram_manager.is_connected()
-            if is_connected:
-                status_lines.append("✅ **Telegram:** Conectado")
-
-                # Check authentication
-                try:
-                    me = await telegram_manager.client.get_me()
-                    if me:
-                        status_lines.append(
-                            f"✅ **Autenticação:** Logado como **{me.first_name}** (@{me.username})"
-                        )
-                    else:
-                        status_lines.append(
-                            "❌ **Autenticação:** Não autenticado (use `/telegram login`)"
-                        )
-                except AUTH_ERRORS as e:
-                    status_lines.append(f"❌ **Autenticação:** Erro - {str(e)}")
-                except Exception as e:
-                    status_lines.append(
-                        f"⚠️ **Autenticação:** Erro ao verificar - {str(e)}"
-                    )
+            me = await services.client.get_me()
+            if not me:
+                status_lines.append(
+                    "❌ **Autenticação:** Não autenticado (use `/telegram login`)"
+                )
             else:
-                status_lines.append("❌ **Telegram:** Desconectado")
-        except Exception as e:
-            status_lines.append(
-                f"❌ **Telegram:** Erro ao verificar conexão - {str(e)}"
-            )
+                status_lines.append(
+                    f"✅ **Autenticação:** Logado como **{me.first_name}** (@{me.username})"
+                )
+        except AUTH_ERRORS as e:
+            status_lines.append(f"❌ **Autenticação:** Erro - {str(e)}")
+        except (ConnectionError, TimeoutError) as e:
+            status_lines.append(f"⚠️ **Autenticação:** Erro ao verificar - {str(e)}")
 
         message = "\n".join(status_lines)
         await interaction.followup.send(message, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Setup function to add the cog to the bot."""
     await bot.add_cog(Info())
