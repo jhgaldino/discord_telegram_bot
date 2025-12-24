@@ -1,14 +1,15 @@
 import logging
 from contextlib import suppress
 
-import aiohttp
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.utils import MISSING
 from src.config import config
 from src.services.discord.cog_loader import CogLoader
+
+# Disable warnings about PyNaCl, we don't use it
+discord.VoiceClient.warn_nacl = False
 
 
 class Bot(commands.Bot):
@@ -22,7 +23,6 @@ class Bot(commands.Bot):
         )
 
         self.logger = logging.getLogger(self.__class__.__name__)
-        self._session: aiohttp.ClientSession | None = None
         self._loader: CogLoader | None = None
         self._logged_in: bool = False
 
@@ -56,8 +56,6 @@ class Bot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """Called when the bot is starting up."""
-        # Create aiohttp session
-        self._session = aiohttp.ClientSession()
 
         # Set up tree error handler to catch CommandNotFound early
         @self.tree.error
@@ -122,9 +120,6 @@ class Bot(commands.Bot):
     async def close(self) -> None:
         if self._loader:
             await self._loader.stop()
-
-        if self._session:
-            await self._session.close()
         await super().close()
 
     def run(

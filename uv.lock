@@ -162,7 +162,6 @@ name = "discord-telegram-bot"
 version = "2.0.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "aiohttp" },
     { name = "discord-py" },
     { name = "python-dotenv" },
     { name = "qrcode", extra = ["pil"] },
@@ -170,7 +169,7 @@ dependencies = [
     { name = "watchfiles" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "ruff" },
     { name = "ty" },
@@ -178,16 +177,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp" },
-    { name = "discord-py" },
-    { name = "python-dotenv" },
-    { name = "qrcode", extras = ["pil"] },
-    { name = "ruff", marker = "extra == 'dev'" },
-    { name = "telethon" },
-    { name = "ty", marker = "extra == 'dev'" },
-    { name = "watchfiles" },
+    { name = "discord-py", specifier = ">=2.6.4" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "qrcode", extras = ["pil"], specifier = ">=8.2" },
+    { name = "telethon", specifier = ">=1.42.0" },
+    { name = "watchfiles", specifier = ">=1.1.1" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ruff", specifier = ">=0.14.10" },
+    { name = "ty", specifier = ">=0.0.5" },
+]
 
 [[package]]
 name = "frozenlist"

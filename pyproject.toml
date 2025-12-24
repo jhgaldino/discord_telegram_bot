@@ -5,18 +5,17 @@ description = "Discord bot that forwards messages from Telegram channels"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "discord.py",
-    "telethon",
-    "python-dotenv",
-    "qrcode[pil]",
-    "aiohttp",
-    "watchfiles",
+    "discord-py>=2.6.4",
+    "python-dotenv>=1.2.1",
+    "qrcode[pil]>=8.2",
+    "telethon>=1.42.0",
+    "watchfiles>=1.1.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "ruff",
-    "ty",
+    "ruff>=0.14.10",
+    "ty>=0.0.5",
 ]
 
 [tool.ruff.lint]

@@ -1,4 +1,4 @@
-# Bot de Integração Discord-Telegram v2
+# Bot de Integração Discord-Telegram
 
 Bot que integra mensagens de canais do Telegram com servidores do Discord, desenvolvido para aprendizado e desenvolvimento de skills.
 
@@ -62,15 +62,7 @@ git clone <repository-url>
 cd discord_telegram_bot
 ```
 
-### 3. Instale as Dependências
-
-Instale as dependências do projeto e do ambiente de desenvolvimento.
-
-```bash
-uv sync --extra dev
-```
-
-### 4. Configure as Variáveis de Ambiente
+### 3. Configure as Variáveis de Ambiente
 
 Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 
@@ -88,13 +80,13 @@ TELEGRAM_API_HASH=seu_api_hash
 
 **Nota:** Os canais são gerenciados via comandos Discord após a inicialização (veja seção de comandos abaixo).
 
-### 5. Execute o Bot
+### 4. Execute o Bot
 
 ```bash
 uv run main.py
 ```
 
-O bot inicializará ambos os serviços (Discord e Telegram) em paralelo. Se já houver uma sessão válida do Telegram, a conexão será automática.
+O `uv run` automaticamente instalará todas as dependências necessárias (incluindo as de desenvolvimento) se ainda não estiverem instaladas. O bot inicializará ambos os serviços (Discord e Telegram) em paralelo. Se já houver uma sessão válida do Telegram, a conexão será automática.
 
 ## Uso
 
@@ -185,11 +177,10 @@ O projeto usa variáveis de ambiente para controlar o comportamento:
 # Instalar/atualizar dependências
 uv sync
 
-# Instalar dependências de desenvolvimento
-uv sync --extra dev
+# Executar o bot
+uv run main.py
 
-# Executar comandos no ambiente virtual
-uv run python main.py
+# Executar comandos de desenvolvimento
 uv run ruff check .
 uv run ruff format .
 uv run ty check
