@@ -1,0 +1,55 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-type-check:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --all-groups
+
+      - name: Run ruff linting
+        run: uv run ruff check .
+
+      - name: Check ruff formatting
+        run: uv run ruff format --check .
+
+      - name: Run ty type checking
+        run: uv run ty check
+
+  build-verify:
+    name: Build Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --all-groups
+
+      - name: Build project
+        run: uv build
+
+      - name: Verify build artifacts
+        run: |
+          ls dist/*.tar.gz dist/*.whl >/dev/null 2>&1 || (echo "Build failed: missing artifacts" && exit 1)
+          echo "Build successful"
