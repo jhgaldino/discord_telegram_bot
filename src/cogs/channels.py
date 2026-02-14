@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 
 import discord
 import telethon.errors
@@ -60,8 +59,8 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
             await interaction.response.send_message(
                 f"O canal {canal.mention} já está na lista"
             )
-        except sqlite3.DatabaseError as e:
-            logger.error(f"Database error adding Discord channel: {e}", exc_info=e)
+        except Exception as e:
+            logger.error(f"Error adding Discord channel: {e}", exc_info=e)
             await interaction.response.send_message(
                 "Erro ao adicionar o canal. Tente novamente."
             )
@@ -82,8 +81,8 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
             await interaction.response.send_message(
                 f"O canal {canal.mention} não está na lista"
             )
-        except sqlite3.DatabaseError as e:
-            logger.error(f"Database error removing Discord channel: {e}", exc_info=e)
+        except Exception as e:
+            logger.error(f"Error removing Discord channel: {e}", exc_info=e)
             await interaction.response.send_message(
                 "Erro ao remover o canal. Tente novamente."
             )
@@ -127,7 +126,15 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     async def add_telegram(
         self, interaction: discord.Interaction, canal: str, encaminhar: bool = True
     ) -> None:
-        channel = await services.client.get_entity(canal)
+        try:
+            channel = await services.client.get_entity(canal)
+        except ValueError:
+            await interaction.response.send_message(
+                f"Não foi possível encontrar o canal **{self._escape_channel(canal)}**. "
+                "Verifique se o link, username ou ID está correto.",
+                suppress_embeds=True,
+            )
+            return
         if not isinstance(channel, TelegramChannel):
             await interaction.response.send_message(
                 f"**{canal}** não é um canal", suppress_embeds=True
@@ -173,8 +180,8 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
                 f"O canal {channel_url} já está na lista",
                 suppress_embeds=True,
             )
-        except sqlite3.DatabaseError as e:
-            logger.error(f"Database error adding Telegram channel: {e}", exc_info=e)
+        except Exception as e:
+            logger.error(f"Error adding Telegram channel: {e}", exc_info=e)
             await interaction.response.send_message(
                 "Erro ao adicionar o canal. Tente novamente.",
             )
@@ -185,7 +192,15 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     async def remove_telegram(
         self, interaction: discord.Interaction, canal: str
     ) -> None:
-        channel = await services.client.get_entity(canal)
+        try:
+            channel = await services.client.get_entity(canal)
+        except ValueError:
+            await interaction.response.send_message(
+                f"Não foi possível encontrar o canal **{self._escape_channel(canal)}**. "
+                "Verifique se o link, username ou ID está correto.",
+                suppress_embeds=True,
+            )
+            return
         if not isinstance(channel, TelegramChannel):
             await interaction.response.send_message(
                 f"**{canal}** não é um canal", suppress_embeds=True
@@ -224,8 +239,8 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
             await interaction.response.send_message(
                 f"O canal {channel_url} não está na lista", suppress_embeds=True
             )
-        except sqlite3.DatabaseError as e:
-            logger.error(f"Database error removing Telegram channel: {e}", exc_info=e)
+        except Exception as e:
+            logger.error(f"Error removing Telegram channel: {e}", exc_info=e)
             await interaction.response.send_message(
                 "Erro ao remover o canal. Tente novamente.",
                 suppress_embeds=True,
