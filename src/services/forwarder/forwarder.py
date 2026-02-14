@@ -55,7 +55,7 @@ class MessageForwarder:
     async def _send_dm_to_user(self, message: str, user_id: int) -> None:
         """Send a direct message to a Discord user."""
         user = await services.bot.fetch_user(user_id)
-        await user.send(message)
+        await user.send(message, suppress_embeds=True)
 
     async def _forward_message_handler(self, event: NewMessage.Event) -> None:
         """Handler function for forwarding messages from Telegram to Discord."""
@@ -72,7 +72,9 @@ class MessageForwarder:
             # Only forward to Discord channels if channel is in our list and forward is enabled
             for discord_channel in self._discord_channels:
                 if discord_channel:
-                    tasks.append(discord_channel.send(text_to_channel))
+                    tasks.append(
+                        discord_channel.send(text_to_channel, suppress_embeds=True)
+                    )
 
         # Always send reminders regardless of forward setting or channel presence
         reminder_by_user = reminders.find_matching_reminders(message.message)
