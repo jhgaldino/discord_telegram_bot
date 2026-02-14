@@ -1,69 +1,76 @@
-import sqlite3
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import Session, sessionmaker
+
+from src.database.models import Base
+
 
 class Database:
-    """Database management class with proper connection handling."""
+    """
+    Database management class with proper SQLAlchemy session handling.
 
-    def __init__(self, db_path: Path = Path("database.db")) -> None:
-        self.db_path = Path(db_path)
-        self._ensure_database_dir()
+    This class provides a convenient interface for database operations
+    using SQLAlchemy ORM. Tables are automatically created on initialization.
+    """
 
-    def _ensure_database_dir(self) -> None:
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self) -> None:
+        """Initialize database connection and create tables."""
+        database_url = self._get_database_url()
+        self.engine = create_engine(
+            database_url,
+            echo=False,
+            connect_args={"check_same_thread": False}
+            if database_url.startswith("sqlite")
+            else {},
+            pool_pre_ping=True if not database_url.startswith("sqlite") else False,
+        )
+        self.SessionLocal = sessionmaker(
+            bind=self.engine, autocommit=False, autoflush=False
+        )
+        # Automatically create tables on initialization
+        self.create_tables()
+
+    @staticmethod
+    def _get_database_url() -> str:
+        """
+        Get database URL from environment variable or default to SQLite.
+
+        Returns:
+            Database URL string (e.g., 'sqlite:///database.db' or 'postgresql://...')
+        """
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            return database_url
+
+        db_path = Path("database.db")
+        return f"sqlite:///{db_path}"
 
     @contextmanager
-    def get_connection(self) -> Generator[sqlite3.Connection]:
-        conn = sqlite3.connect(str(self.db_path))
-        conn.row_factory = sqlite3.Row
+    def get_session(self) -> Generator[Session]:
+        """
+        Get a database session context manager.
+
+        Yields:
+            SQLAlchemy session
+
+        Example:
+            with db.get_session() as session:
+                # Use session here
+                pass
+        """
+        session = self.SessionLocal()
         try:
-            yield conn
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
         finally:
-            conn.close()
-
-    def execute(self, query: str, params: tuple = ()) -> None:
-        """
-        Execute a query that modifies the database.
-
-        Args:
-            query: SQL query to execute
-            params: Query parameters
-        """
-        with self.get_connection() as conn:
-            conn.execute(query, params)
-            conn.commit()
-
-    def fetch_all(self, query: str, params: tuple = ()) -> list[sqlite3.Row]:
-        """
-        Execute a SELECT query and return all results.
-
-        Args:
-            query: SQL query to execute
-            params: Query parameters
-
-        Returns:
-            List of rows from the query
-        """
-        with self.get_connection() as conn:
-            cursor = conn.execute(query, params)
-            return cursor.fetchall()
-
-    def fetch_one(self, query: str, params: tuple = ()) -> sqlite3.Row | None:
-        """
-        Execute a SELECT query and return one result.
-
-        Args:
-            query: SQL query to execute
-            params: Query parameters
-
-        Returns:
-            Single row from the query, or None if no results
-        """
-        with self.get_connection() as conn:
-            cursor = conn.execute(query, params)
-            return cursor.fetchone()
+            session.close()
 
     def table_exists(self, table_name: str) -> bool:
         """
@@ -75,18 +82,16 @@ class Database:
         Returns:
             True if table exists, False otherwise
         """
-        query = """
-            SELECT name FROM sqlite_master
-            WHERE type='table' AND name=?
-        """
-        result = self.fetch_one(query, (table_name,))
-        return result is not None
+        with self.get_session() as session:
+            if session.bind is None:
+                return False
+            inspector = inspect(session.bind)
+            return table_name in inspector.get_table_names()
 
-    def create_table_if_not_exists(self, query: str) -> None:
-        """
-        Create a table if it doesn't exist.
+    def create_tables(self) -> None:
+        """Create all tables defined in models."""
+        Base.metadata.create_all(bind=self.engine)
 
-        Args:
-            query: CREATE TABLE query
-        """
-        self.execute(query)
+    def drop_tables(self) -> None:
+        """Drop all tables. Use with caution!"""
+        Base.metadata.drop_all(bind=self.engine)

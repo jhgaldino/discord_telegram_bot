@@ -8,6 +8,7 @@ dependencies = [
     "discord-py>=2.6.4",
     "python-dotenv>=1.2.1",
     "qrcode[pil]>=8.2",
+    "sqlalchemy>=2.0.45",
     "telethon>=1.42.0",
     "watchfiles>=1.1.1",
 ]
