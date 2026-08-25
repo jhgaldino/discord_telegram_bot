@@ -10,6 +10,7 @@ from src.shared.exceptions import (
     ReminderLimitReachedError,
     ReminderTextExistsError,
 )
+from src.shared.services import services
 from src.shared.utils import (
     format_list_to_markdown,
     plural,
@@ -89,6 +90,8 @@ class Reminders(
                 f"O grupo **{escaped_group}** não existe"
             )
             return
+
+        services.notifier.reload_reminders()
 
         # Success case
         if grupo == texto:
@@ -177,6 +180,7 @@ class Reminders(
             group_deleted = reminders.remove_text_from_group(
                 interaction.user.id, group_name, texto
             )
+            services.notifier.reload_reminders()
             message = f"Removi **{escaped_text}** do grupo **{escaped_group}**"
             if group_deleted:
                 message += ". O grupo foi deletado por estar vazio."
@@ -196,6 +200,7 @@ class Reminders(
 
         try:
             reminders.delete_group(interaction.user.id, grupo)
+            services.notifier.reload_reminders()
             await interaction.response.send_message(
                 f"Deletei o grupo **{escaped_group}** e todos os seus textos"
             )

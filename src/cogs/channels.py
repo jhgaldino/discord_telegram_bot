@@ -29,88 +29,9 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     def _escape_channel(channel: str | int) -> str:
         return discord.utils.escape_markdown(str(channel))
 
-    discord_group = app_commands.Group(
-        name="discord", description="Comandos para gerenciar canais do Discord"
-    )
-
     @staticmethod
     def _get_telegram_url_markdown(username: str) -> str:
         return f"[{username}](https://t.me/{username})"
-
-    @discord_group.command(name="adicionar", description="Adiciona um canal do Discord")
-    @app_commands.describe(canal="ID do canal do Discord")
-    @admin_only()
-    async def add_discord(
-        self, interaction: discord.Interaction, canal: discord.abc.GuildChannel
-    ) -> None:
-        bot_member = canal.guild.get_member(interaction.application_id)
-        if bot_member and not canal.permissions_for(bot_member).send_messages:
-            await interaction.response.send_message(
-                f"Não tenho permissão para enviar mensagens em {canal.mention}"
-            )
-            return
-
-        try:
-            channel_db.add_discord_channel(canal.id)
-            services.forwarder.reload_channels()
-            await interaction.response.send_message(
-                f"Adicionei o canal do Discord {canal.mention}"
-            )
-        except ChannelAlreadyExistsError:
-            await interaction.response.send_message(
-                f"O canal {canal.mention} já está na lista"
-            )
-        except sqlite3.DatabaseError as e:
-            logger.error(f"Database error adding Discord channel: {e}", exc_info=e)
-            await interaction.response.send_message(
-                "Erro ao adicionar o canal. Tente novamente."
-            )
-
-    @discord_group.command(name="remover", description="Remove um canal do Discord")
-    @app_commands.describe(canal="ID do canal do Discord")
-    @admin_only()
-    async def remove_discord(
-        self, interaction: discord.Interaction, canal: discord.abc.GuildChannel
-    ) -> None:
-        try:
-            channel_db.remove_discord_channel(canal.id)
-            services.forwarder.reload_channels()
-            await interaction.response.send_message(
-                f"Removi o canal do Discord {canal.mention}"
-            )
-        except ChannelNotFoundError:
-            await interaction.response.send_message(
-                f"O canal {canal.mention} não está na lista"
-            )
-        except sqlite3.DatabaseError as e:
-            logger.error(f"Database error removing Discord channel: {e}", exc_info=e)
-            await interaction.response.send_message(
-                "Erro ao remover o canal. Tente novamente."
-            )
-
-    @discord_group.command(
-        name="listar", description="Lista todos os canais do Discord"
-    )
-    @admin_only()
-    async def list_discord(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer()
-
-        channel_list = channel_db.list_discord_channels()
-
-        if not channel_list:
-            await interaction.followup.send("Não há canais do Discord configurados")
-            return
-
-        message_parts: list[str] = []
-        for channel in channel_list:
-            message_parts.append(f"- <#{channel.channel_id}>")
-
-        header = (
-            f"Você tem {len(channel_list)} canal(is) do Discord configurado(s):\n\n"
-        )
-        message = header + "\n".join(message_parts)
-
-        await interaction.followup.send(message)
 
     telegram_group = app_commands.Group(
         name="telegram", description="Comandos para gerenciar canais do Telegram"
@@ -119,14 +40,9 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
     @telegram_group.command(
         name="adicionar", description="Adiciona um canal do Telegram"
     )
-    @app_commands.describe(
-        canal="Link, Username ou ID do canal do Telegram",
-        encaminhar="Se o canal deve encaminhar mensagens para o Discord (padrão: True)",
-    )
+    @app_commands.describe(canal="Link, Username ou ID do canal do Telegram")
     @admin_only()
-    async def add_telegram(
-        self, interaction: discord.Interaction, canal: str, encaminhar: bool = True
-    ) -> None:
+    async def add_telegram(self, interaction: discord.Interaction, canal: str) -> None:
         channel = await services.client.get_entity(canal)
         if not isinstance(channel, TelegramChannel):
             await interaction.response.send_message(
@@ -162,8 +78,8 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
         channel_url = self._get_telegram_url_markdown(username)
 
         try:
-            channel_db.add_telegram_channel(channel.id, username, encaminhar)
-            services.forwarder.reload_channels()
+            channel_db.add_telegram_channel(channel.id, username)
+            services.notifier.reload_channels()
             await interaction.response.send_message(
                 f"Adicionei o canal do Telegram {channel_url}",
                 suppress_embeds=True,
@@ -202,7 +118,7 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
 
         try:
             channel_db.remove_telegram_channel(channel.id)
-            services.forwarder.reload_channels()
+            services.notifier.reload_channels()
 
             # Leave channel if joined
             if not channel.left:

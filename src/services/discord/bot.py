@@ -73,27 +73,13 @@ class Bot(commands.Bot):
         self._loader = CogLoader(bot=self, hot_reload=config.is_development)
         await self._loader.start()
 
+        synced = await self.tree.sync()
+        self.logger.info(f"Synced {len(synced)} command(s)")
+
     async def on_ready(self) -> None:
         """Called when the bot is ready."""
         self.logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
         self.logger.info(f"Connected to {len(self.guilds)} guild(s)")
-
-        synced = await self.tree.sync()
-        self.logger.info(f"Synced {len(synced)} command(s)")
-
-    async def on_command_error(
-        self, ctx: commands.Context, error: commands.CommandError
-    ) -> None:
-        """Global error handler for prefix commands."""
-        if isinstance(error, commands.CommandNotFound):
-            return
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"Argumento obrigatório faltando: {error.param.name}")
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send(f"Argumento inválido: {error}")
-        else:
-            self.logger.error(f"Unhandled command error: {error}", exc_info=error)
-            await ctx.send("Ocorreu um erro ao executar o comando.")
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError

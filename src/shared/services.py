@@ -5,7 +5,7 @@ from src.shared.exceptions import ServiceNotInitializedError
 
 if TYPE_CHECKING:
     from src.services.discord.bot import Bot
-    from src.services.forwarder.forwarder import MessageForwarder
+    from src.services.notifications import ReminderNotifier
     from src.services.telegram.client import TelegramClient
 
 
@@ -17,7 +17,7 @@ class ServiceRegistry:
     ensuring they're never None when accessed.
     """
 
-    __slots__ = ("_bot", "_client", "_forwarder", "_database")
+    __slots__ = ("_bot", "_client", "_notifier", "_database")
 
     _instance: ServiceRegistry | None = None
 
@@ -27,7 +27,7 @@ class ServiceRegistry:
             cls._instance = super().__new__(cls)
             cls._instance._bot = None
             cls._instance._client = None
-            cls._instance._forwarder = None
+            cls._instance._notifier = None
             cls._instance._database = None
         return cls._instance
 
@@ -62,20 +62,20 @@ class ServiceRegistry:
         self._client = value
 
     @property
-    def forwarder(self) -> MessageForwarder:
-        """Get the message forwarder instance. Raises ServiceNotInitializedError if not initialized."""
-        if self._forwarder is None:
+    def notifier(self) -> ReminderNotifier:
+        """Get the reminder notifier or raise if it has not been initialized."""
+        if self._notifier is None:
             raise ServiceNotInitializedError(
-                "Message forwarder has not been initialized yet"
+                "Reminder notifier has not been initialized yet"
             )
-        return self._forwarder
+        return self._notifier
 
-    @forwarder.setter
-    def forwarder(self, value: MessageForwarder) -> None:
-        """Set the message forwarder instance."""
-        if self._forwarder is not None:
-            raise RuntimeError("Message forwarder has already been initialized")
-        self._forwarder = value
+    @notifier.setter
+    def notifier(self, value: ReminderNotifier) -> None:
+        """Set the reminder notifier instance."""
+        if self._notifier is not None:
+            raise RuntimeError("Reminder notifier has already been initialized")
+        self._notifier = value
 
     @property
     def database(self) -> Database:

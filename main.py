@@ -7,7 +7,7 @@ import discord.utils
 
 from src.config import config
 from src.services.discord.bot import Bot
-from src.services.forwarder.forwarder import MessageForwarder
+from src.services.notifications import ReminderNotifier
 from src.services.telegram.client import TelegramClient
 from src.shared.exceptions import ServiceNotInitializedError
 from src.shared.services import services
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 async def initialize_services() -> None:
-    """Initialize all services: Discord bot, Telegram client, and message forwarder."""
+    """Initialize the Discord, Telegram, and reminder notification services."""
     bot, client = await asyncio.gather(
         Bot.create_and_initialize(config.discord_token),
         TelegramClient.create_and_connect(
@@ -31,19 +31,20 @@ async def initialize_services() -> None:
     services.bot = bot
     services.client = client
 
-    # Setup forwarder (main application functionality)
-    forwarder = MessageForwarder()
-    forwarder.start()
-    services.forwarder = forwarder
+    notifier = ReminderNotifier()
+    services.notifier = notifier
 
-    async def on_ready_handler() -> None:
-        await forwarder.on_bot_ready()
+    async def start_notifier() -> None:
+        notifier.start()
 
-    services.bot.add_listener(on_ready_handler, "on_ready")
+    services.bot.add_listener(start_notifier, "on_ready")
 
 
 async def cleanup_services() -> None:
-    """Cleanup all services gracefully, ignoring errors if services aren't initialized."""
+    """Cleanup all services gracefully, ignoring uninitialized services."""
+
+    with suppress(ServiceNotInitializedError, AssertionError):
+        services.notifier.stop()
 
     async def cleanup_bot() -> None:
         with suppress(ServiceNotInitializedError, AssertionError):

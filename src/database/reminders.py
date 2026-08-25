@@ -17,6 +17,9 @@ class ReminderGroup:
     texts: list[str]
 
 
+type ReminderGroupsByUser = dict[int, list[ReminderGroup]]
+
+
 # Constants
 DEFAULT_GROUP_NAME = "Padrão"
 MAX_GROUPS_PER_USER = 25
@@ -353,6 +356,31 @@ def list_groups_by_user(
     return result
 
 
+def list_all_groups_by_user() -> ReminderGroupsByUser:
+    """Return every non-empty reminder group, organized by Discord user."""
+    rows = services.database.fetch_all(
+        """
+        SELECT rg.user_id, rg.group_name, rt.text
+        FROM reminder_groups rg
+        INNER JOIN reminder_texts rt ON rg.id = rt.group_id
+        ORDER BY rg.user_id, rg.updated_at DESC, rg.id, rt.text
+        """
+    )
+
+    grouped: dict[int, dict[str, list[str]]] = {}
+    for row in rows:
+        user_groups = grouped.setdefault(row["user_id"], {})
+        user_groups.setdefault(row["group_name"], []).append(row["text"])
+
+    return {
+        user_id: [
+            ReminderGroup(group_name=group_name, texts=texts)
+            for group_name, texts in groups.items()
+        ]
+        for user_id, groups in grouped.items()
+    }
+
+
 def delete_group(user_id: int, group_name: str) -> None:
     """
     Delete a reminder group and all its texts.
@@ -375,51 +403,18 @@ def delete_group(user_id: int, group_name: str) -> None:
     db.execute("DELETE FROM reminder_groups WHERE id = ?", (group_id,))
 
 
-def find_matching_reminders(text: str) -> dict[int, list[str]]:
-    """
-    Find users whose reminder groups match the given text (all texts in group must match).
+def find_matching_reminders(
+    text: str, groups_by_user: ReminderGroupsByUser | None = None
+) -> dict[int, list[str]]:
+    """Find users whose reminder groups are fully contained in the given text."""
+    if groups_by_user is None:
+        groups_by_user = list_all_groups_by_user()
 
-    Args:
-        text: Text to search for reminders in (will be sanitized internally)
-
-    Returns:
-        Dictionary mapping user IDs to lists of matching group names
-    """
-    db = services.database
-    # Sanitize input text for matching (stored texts are already sanitized)
     text_sanitized = sanitize_text(text)
-
-    # Single query with JOIN to get all groups with their texts
-    groups_with_texts = db.fetch_all(
-        """
-        SELECT rg.user_id, rg.group_name, rt.text
-        FROM reminder_groups rg
-        LEFT JOIN reminder_texts rt ON rg.id = rt.group_id
-        ORDER BY rg.user_id, rg.id
-    """
-    )
-
-    # Group by user_id and group_name, collecting texts
-    groups_by_user: dict[int, dict[str, list[str]]] = {}
-    for row in groups_with_texts:
-        user_id = row["user_id"]
-        group_name = row["group_name"]
-        text_val = row["text"]
-
-        if user_id not in groups_by_user:
-            groups_by_user[user_id] = {}
-        if group_name not in groups_by_user[user_id]:
-            groups_by_user[user_id][group_name] = []
-        if text_val:
-            groups_by_user[user_id][group_name].append(text_val)
-
-    # Check which groups have all texts matching
-    reminder_by_user: dict[int, list[str]] = {}
+    matches: dict[int, list[str]] = {}
     for user_id, groups in groups_by_user.items():
-        for group_name, texts in groups.items():
-            if texts and all(text_val in text_sanitized for text_val in texts):
-                if user_id not in reminder_by_user:
-                    reminder_by_user[user_id] = []
-                reminder_by_user[user_id].append(group_name)
+        for group in groups:
+            if all(group_text in text_sanitized for group_text in group.texts):
+                matches.setdefault(user_id, []).append(group.group_name)
 
-    return reminder_by_user
+    return matches
