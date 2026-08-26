@@ -4,7 +4,7 @@ import re
 
 import discord
 from telethon.events import NewMessage
-from telethon.tl.types import Message
+from telethon.tl.types import Channel, Message
 
 from src.database import channels as channel_db
 from src.database import reminders
@@ -34,6 +34,17 @@ class ReminderNotifier:
     def _format_message(message: Message) -> str:
         return re.sub(r"\n+", "\n", message.message)
 
+    @staticmethod
+    async def _get_message_link(event: NewMessage.Event) -> str | None:
+        chat = await event.get_chat()
+        if not isinstance(chat, Channel):
+            return None
+
+        if chat.username:
+            return f"https://t.me/{chat.username}/{event.message.id}"
+
+        return f"https://t.me/c/{chat.id}/{event.message.id}"
+
     async def _send_dm_to_user(self, message: str, user_id: int) -> None:
         try:
             user = services.bot.get_user(user_id)
@@ -52,6 +63,10 @@ class ReminderNotifier:
             return
 
         formatted_message = self._format_message(message)
+        message_link = await self._get_message_link(event)
+        if message_link:
+            formatted_message += f"\n\n[Ver mensagem no Telegram]({message_link})"
+
         await asyncio.gather(
             *(
                 self._send_dm_to_user(
