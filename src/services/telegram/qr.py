@@ -60,7 +60,7 @@ async def login(
         except AUTH_ERRORS:
             with suppress(Exception):
                 await client.disconnect()
-        except (ConnectionError, TimeoutError):
+        except ConnectionError, TimeoutError:
             raise
 
     try:

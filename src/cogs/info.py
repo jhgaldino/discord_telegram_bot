@@ -16,6 +16,14 @@ class Info(commands.Cog):
     @app_commands.command(name="info", description="Mostra informações sobre o bot")
     @admin_only()
     async def info(self, interaction: discord.Interaction) -> None:
+        bot = services.bot
+        bot_user = bot.user
+        if bot_user is None:
+            await interaction.response.send_message(
+                "As informações do bot ainda não estão disponíveis.", ephemeral=True
+            )
+            return
+
         uptime = discord.utils.utcnow() - self.start_time
         days = uptime.days
         hours, remainder = divmod(uptime.seconds, 3600)
@@ -26,15 +34,15 @@ class Info(commands.Cog):
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow(),
         )
-        embed.add_field(name="Nome do Bot", value=services.bot.user.name, inline=True)
-        embed.add_field(name="ID do Bot", value=services.bot.user.id, inline=True)
+        embed.add_field(name="Nome do Bot", value=bot_user.name, inline=True)
+        embed.add_field(name="ID do Bot", value=bot_user.id, inline=True)
         embed.add_field(
             name="Latência",
-            value=f"{round(services.bot.latency * 1000)}ms",
+            value=f"{round(bot.latency * 1000)}ms",
             inline=True,
         )
-        embed.add_field(name="Servidores", value=len(services.bot.guilds), inline=True)
-        embed.add_field(name="Usuários", value=len(services.bot.users), inline=True)
+        embed.add_field(name="Servidores", value=len(bot.guilds), inline=True)
+        embed.add_field(name="Usuários", value=len(bot.users), inline=True)
         embed.add_field(
             name="Tempo Online",
             value=f"{days}d {hours}h {minutes}m {seconds}s",
@@ -47,7 +55,7 @@ class Info(commands.Cog):
             name="Versão do discord.py", value=discord.__version__, inline=True
         )
         embed.add_field(name="Plataforma", value=platform.system(), inline=True)
-        embed.set_thumbnail(url=services.bot.user.display_avatar.url)
+        embed.set_thumbnail(url=bot_user.display_avatar.url)
 
         await interaction.response.send_message(embed=embed)
 

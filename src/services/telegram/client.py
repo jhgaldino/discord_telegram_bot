@@ -10,7 +10,10 @@ from telethon.tl.types import (
     InputNotifyPeer,
     InputPeerChannel,
     InputPeerNotifySettings,
+    User,
 )
+
+from src.shared.utils import format_telegram_account
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +93,10 @@ class TelegramClient(telethon.TelegramClient):
 
         client = cls(api_id=api_id, api_hash=api_hash)
         await client.connect()
-        user = await client.get_me()
-        if user:
-            logger.info(f"Logged in as {user.first_name} (@{user.username})")
+        me = await client.get_me()
+        if isinstance(me, User):
+            account = format_telegram_account(me)
+            logger.info(f"Logged in as {account}")
         else:
             logger.info("Not logged in")
         return client

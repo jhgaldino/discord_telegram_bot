@@ -78,7 +78,12 @@ class Bot(commands.Bot):
 
     async def on_ready(self) -> None:
         """Called when the bot is ready."""
-        self.logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
+        user = self.user
+        if user is None:
+            self.logger.warning("Discord bot is ready without an authenticated user")
+            return
+
+        self.logger.info(f"Logged in as {user} (ID: {user.id})")
         self.logger.info(f"Connected to {len(self.guilds)} guild(s)")
 
     async def on_app_command_error(

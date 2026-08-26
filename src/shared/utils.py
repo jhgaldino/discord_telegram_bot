@@ -3,6 +3,18 @@ import re
 import unicodedata
 
 from telethon.tl import TLObject
+from telethon.tl.types import User
+
+
+def format_telegram_account(user: User, bold: bool = False) -> str:
+    name = user.first_name or "Unknown"
+    if bold:
+        name = f"**{name}**"
+
+    username = user.username
+    if username:
+        return f"{name} (@{username})"
+    return name
 
 
 def plural(count: int, singular: str, plural: str) -> str:
