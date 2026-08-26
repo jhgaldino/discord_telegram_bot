@@ -8,8 +8,9 @@ from discord.utils import MISSING
 from src.config import config
 from src.services.discord.cog_loader import CogLoader
 
-# Disable warnings about PyNaCl, we don't use it
+# Disable optional voice dependency warnings
 discord.VoiceClient.warn_nacl = False
+discord.VoiceClient.warn_dave = False
 
 
 class Bot(commands.Bot):
