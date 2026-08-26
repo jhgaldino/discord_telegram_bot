@@ -8,7 +8,7 @@ Cada pessoa cadastra os próprios lembretes e recebe uma DM quando uma publicaç
 
 1. Um administrador conecta a conta do Telegram ao bot.
 2. O administrador escolhe quais canais públicos do Telegram serão acompanhados.
-3. Cada usuário cadastra seus lembretes com `/lembretes adicionar`.
+3. Cada usuário cadastra seus lembretes com `/lembretes add`.
 4. Quando uma publicação combina com um lembrete, o bot envia uma DM para o usuário.
 
 Por padrão, o bot só verifica publicações que tenham um link `https://`.
@@ -62,25 +62,27 @@ Se a conta usa autenticação em dois fatores, informe a senha no parâmetro opc
 
 Os canais do Telegram também são gerenciados por administradores:
 
-- `/canais telegram adicionar canal:<link|username|id>`
-- `/canais telegram remover canal:<link|username|id>`
-- `/canais telegram listar`
+- `/canais add canal:<link|username|id>`
+- `/canais rm canal:<link|username|id>`
+- `/canais ls`
 
-Apenas canais públicos podem ser adicionados.
+Apenas canais públicos podem ser adicionados. Se a conta ainda não participa do canal, o bot entra nele e tenta arquivá-lo e silenciá-lo. Se a conta já participa, as configurações existentes do Telegram não são alteradas.
+
+Remover um canal apenas interrompe o monitoramento: a conta continua inscrita e as configurações do Telegram são preservadas.
 
 ### 3. Crie um lembrete
 
 Qualquer usuário pode criar os próprios lembretes:
 
 ```text
-/lembretes adicionar texto:notebook
+/lembretes add texto:notebook
 ```
 
 Isso cria um grupo chamado `notebook`. Para juntar vários textos no mesmo grupo, informe o nome do grupo:
 
 ```text
-/lembretes adicionar texto:notebook grupo:promoção
-/lembretes adicionar texto:cupom grupo:promoção
+/lembretes add texto:notebook grupo:promoção
+/lembretes add texto:cupom grupo:promoção
 ```
 
 Nesse exemplo, a DM só será enviada quando `notebook` e `cupom` aparecerem na mesma publicação.
@@ -89,12 +91,12 @@ Nesse exemplo, a DM só será enviada quando `notebook` e `cupom` aparecerem na 
 
 ### Lembretes
 
-- `/lembretes adicionar texto:<texto> [grupo:<nome>]` — adiciona um texto a um grupo
-- `/lembretes listar [grupo:<nome>]` — mostra seus lembretes
-- `/lembretes remover texto:<texto> [grupo:<nome>]` — remove um texto
-- `/lembretes deletar grupo:<nome>` — apaga um grupo inteiro
+- `/lembretes add texto:<texto> [grupo:<nome>]` — adiciona um texto a um grupo
+- `/lembretes ls [grupo:<nome>]` — mostra seus lembretes
+- `/lembretes rm texto:<texto> [grupo:<nome>]` — remove um texto
+- `/lembretes del grupo:<nome>` — apaga um grupo inteiro
 
-Se o nome do grupo não for informado, o próprio texto será usado como nome.
+Se o nome do grupo não for informado, o próprio texto será usado como nome. As respostas de `add`, `rm` e `del` são privadas; `ls` é público para que o usuário possa compartilhar sua configuração quando quiser.
 
 Quando uma publicação combina com vários grupos do mesmo usuário, o bot junta tudo em uma única DM.
 
@@ -103,16 +105,18 @@ Quando uma publicação combina com vários grupos do mesmo usuário, o bot junt
 Estes comandos são apenas para administradores:
 
 - `/telegram login [senha:<senha-2FA>]`
-- `/canais telegram adicionar canal:<link|username|id>`
-- `/canais telegram remover canal:<link|username|id>`
-- `/canais telegram listar`
+- `/telegram status`
+- `/canais add canal:<link|username|id>`
+- `/canais rm canal:<link|username|id>`
+- `/canais ls`
 
-### Informações
+O status do Telegram responde de forma privada.
 
-- `/info bot` — mostra informações sobre o bot
-- `/info telegram` — mostra o estado da conexão com o Telegram
+### Informações do bot
 
-Os comandos de informações também são restritos a administradores.
+- `/info` — mostra informações sobre o bot
+
+`/info` é restrito a administradores e responde publicamente.
 
 ## Desenvolvimento
 
