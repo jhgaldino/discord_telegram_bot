@@ -5,9 +5,7 @@ import discord
 import telethon.errors
 from discord import app_commands
 from discord.ext import commands
-from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
 from telethon.tl.types import Channel as TelegramChannel
-from telethon.utils import get_input_channel
 
 from src.database import channels as channel_db
 from src.shared.exceptions import (
@@ -58,22 +56,22 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
             )
             return
 
-        # Join channel if not already joined, archive it to keep it hidden
-        if channel.left:
-            input_channel = get_input_channel(channel)
-            try:
-                await services.client(JoinChannelRequest(input_channel))
-                await services.client.edit_folder(input_channel, 1)
-            except (
-                telethon.errors.RPCError,
-                ConnectionError,
-                TimeoutError,
-            ) as e:
-                logger.warning(f"Failed to join Telegram channel: {e}", exc_info=e)
-                await interaction.response.send_message(
-                    "Não foi possível entrar no canal, tente novamente mais tarde."
-                )
-                return
+        try:
+            await services.client.ensure_channel_subscription(channel)
+        except (
+            telethon.errors.RPCError,
+            ConnectionError,
+            TimeoutError,
+            ValueError,
+        ) as e:
+            logger.warning(
+                f"Failed to configure Telegram channel subscription: {e}",
+                exc_info=e,
+            )
+            await interaction.response.send_message(
+                "Não foi possível configurar o canal no Telegram, tente novamente mais tarde."
+            )
+            return
 
         channel_url = self._get_telegram_url_markdown(username)
 
@@ -120,20 +118,8 @@ class Channels(commands.GroupCog, name="canais", description="Gerenciamento de c
             channel_db.remove_telegram_channel(channel.id)
             services.notifier.reload_channels()
 
-            # Leave channel if joined
-            if not channel.left:
-                input_channel = get_input_channel(channel)
-                try:
-                    await services.client(LeaveChannelRequest(input_channel))
-                except (
-                    telethon.errors.RPCError,
-                    ConnectionError,
-                    TimeoutError,
-                ) as e:
-                    logger.warning(f"Error leaving Telegram channel: {e}", exc_info=e)
-
             await interaction.response.send_message(
-                f"Removi o canal do Telegram {channel_url}",
+                f"Parei de monitorar o canal do Telegram {channel_url}",
                 suppress_embeds=True,
             )
         except ChannelNotFoundError:

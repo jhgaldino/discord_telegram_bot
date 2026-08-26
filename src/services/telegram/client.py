@@ -1,8 +1,21 @@
 import logging
+from datetime import UTC, datetime
 
 import telethon
+from telethon.tl.functions.account import UpdateNotifySettingsRequest
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.types import (
+    Channel,
+    InputChannel,
+    InputNotifyPeer,
+    InputPeerChannel,
+    InputPeerNotifySettings,
+)
 
 logger = logging.getLogger(__name__)
+
+_ARCHIVE_FOLDER_ID = 1
+_MAX_MUTE_UNTIL = datetime.fromtimestamp(2**31 - 1, tz=UTC)
 
 
 class TelegramClient(telethon.TelegramClient):
@@ -22,6 +35,43 @@ class TelegramClient(telethon.TelegramClient):
     async def disconnect(self) -> None:
         await super().disconnect()
         logger.info("Telegram client disconnected")
+
+    async def ensure_channel_subscription(self, channel: Channel) -> bool:
+        """Subscribe, archive, and mute a channel unless already subscribed."""
+        if channel.left is not True:
+            return False
+
+        if channel.access_hash is None:
+            raise ValueError("Telegram channel access hash is required")
+
+        input_channel = InputChannel(channel.id, channel.access_hash)
+        input_peer = InputPeerChannel(channel.id, channel.access_hash)
+        await self(JoinChannelRequest(input_channel))
+
+        try:
+            await self.edit_folder(input_peer, _ARCHIVE_FOLDER_ID)
+        except Exception:
+            logger.warning(
+                "Failed to archive newly subscribed Telegram channel %s",
+                channel.id,
+                exc_info=True,
+            )
+
+        try:
+            await self(
+                UpdateNotifySettingsRequest(
+                    peer=InputNotifyPeer(input_peer),
+                    settings=InputPeerNotifySettings(mute_until=_MAX_MUTE_UNTIL),
+                )
+            )
+        except Exception:
+            logger.warning(
+                "Failed to mute newly subscribed Telegram channel %s",
+                channel.id,
+                exc_info=True,
+            )
+
+        return True
 
     @classmethod
     async def create_and_connect(
