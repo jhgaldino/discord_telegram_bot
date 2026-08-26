@@ -20,6 +20,41 @@ class Telegram(
     def __init__(self) -> None:
         self.pending_qr_messages: dict[int, discord.Message] = {}
 
+    @app_commands.command(
+        name="status", description="Mostra o estado da conexão com o Telegram"
+    )
+    @admin_only()
+    async def status(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        if not services.client.is_connected():
+            await interaction.followup.send(
+                "❌ **Telegram:** Desconectado", ephemeral=True
+            )
+            return
+
+        status_lines = ["✅ **Telegram:** Conectado"]
+
+        try:
+            me = await services.client.get_me()
+            if not me:
+                status_lines.append(
+                    "❌ **Autenticação:** Não autenticado (use `/telegram login`)"
+                )
+            else:
+                first_name = getattr(me, "first_name", "Desconhecido")
+                username = getattr(me, "username", None)
+                account = f"**{first_name}**"
+                if username:
+                    account += f" (@{username})"
+                status_lines.append(f"✅ **Autenticação:** Logado como {account}")
+        except AUTH_ERRORS as e:
+            status_lines.append(f"❌ **Autenticação:** Erro - {str(e)}")
+        except (ConnectionError, TimeoutError) as e:
+            status_lines.append(f"⚠️ **Autenticação:** Erro ao verificar - {str(e)}")
+
+        await interaction.followup.send("\n".join(status_lines), ephemeral=True)
+
     @app_commands.command(name="login", description="Faz login no Telegram via QR code")
     @app_commands.describe(
         senha="Senha 2FA (opcional, apenas se sua conta tiver autenticação de dois fatores)"

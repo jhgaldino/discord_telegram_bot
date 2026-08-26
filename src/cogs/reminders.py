@@ -39,7 +39,7 @@ class Reminders(
         return discord.utils.escape_markdown(group)
 
     @app_commands.command(
-        name="adicionar",
+        name="add",
         description="Adiciona um texto a um grupo de lembretes",
     )
     @app_commands.describe(
@@ -64,7 +64,8 @@ class Reminders(
         except ReminderLimitReachedError:
             await interaction.response.send_message(
                 f"Você já tem {MAX_GROUPS_PER_USER} grupos de lembretes. "
-                "Delete um grupo antes de criar outro."
+                "Delete um grupo antes de criar outro.",
+                ephemeral=True,
             )
             return
         except ReminderGroupAlreadyExistsError:
@@ -77,17 +78,19 @@ class Reminders(
         except ReminderLimitReachedError:
             await interaction.response.send_message(
                 f"O grupo **{escaped_group}** já tem {MAX_TEXTS_PER_GROUP} textos. "
-                "Remova um texto antes de adicionar outro."
+                "Remova um texto antes de adicionar outro.",
+                ephemeral=True,
             )
             return
         except ReminderTextExistsError:
             await interaction.response.send_message(
-                f"O texto **{escaped_text}** já existe no grupo **{escaped_group}**"
+                f"O texto **{escaped_text}** já existe no grupo **{escaped_group}**",
+                ephemeral=True,
             )
             return
         except ReminderGroupNotFoundError:
             await interaction.response.send_message(
-                f"O grupo **{escaped_group}** não existe"
+                f"O grupo **{escaped_group}** não existe", ephemeral=True
             )
             return
 
@@ -97,17 +100,19 @@ class Reminders(
         if grupo == texto:
             # Auto-created group with text name
             await interaction.response.send_message(
-                f"Vou te lembrar quando encontrar **{escaped_text}**"
+                f"Vou te lembrar quando encontrar **{escaped_text}**",
+                ephemeral=True,
             )
             return
 
         # Explicit group specified
         await interaction.response.send_message(
-            f"Adicionei **{escaped_text}** ao grupo **{escaped_group}**"
+            f"Adicionei **{escaped_text}** ao grupo **{escaped_group}**",
+            ephemeral=True,
         )
 
     @app_commands.command(
-        name="listar",
+        name="ls",
         description="Mostra grupos de lembretes e seus textos",
     )
     @app_commands.describe(
@@ -158,7 +163,7 @@ class Reminders(
         await interaction.followup.send(message)
 
     @app_commands.command(
-        name="remover",
+        name="rm",
         description="Remove um texto de um grupo de lembretes",
     )
     @app_commands.describe(
@@ -184,14 +189,15 @@ class Reminders(
             message = f"Removi **{escaped_text}** do grupo **{escaped_group}**"
             if group_deleted:
                 message += ". O grupo foi deletado por estar vazio."
-            await interaction.response.send_message(message)
+            await interaction.response.send_message(message, ephemeral=True)
         except ReminderGroupNotFoundError:
             await interaction.response.send_message(
-                f"O grupo **{escaped_group}** não existe ou o texto **{escaped_text}** não está nele"
+                f"O grupo **{escaped_group}** não existe ou o texto **{escaped_text}** não está nele",
+                ephemeral=True,
             )
 
     @app_commands.command(
-        name="deletar",
+        name="del",
         description="Deleta um grupo de lembretes e todos os seus textos",
     )
     @app_commands.describe(grupo="Nome do grupo a deletar")
@@ -202,11 +208,12 @@ class Reminders(
             reminders.delete_group(interaction.user.id, grupo)
             services.notifier.reload_reminders()
             await interaction.response.send_message(
-                f"Deletei o grupo **{escaped_group}** e todos os seus textos"
+                f"Deletei o grupo **{escaped_group}** e todos os seus textos",
+                ephemeral=True,
             )
         except ReminderGroupNotFoundError:
             await interaction.response.send_message(
-                f"O grupo **{escaped_group}** não existe"
+                f"O grupo **{escaped_group}** não existe", ephemeral=True
             )
 
 

@@ -5,16 +5,15 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.services.telegram.exceptions import AUTH_ERRORS
 from src.shared.permissions import admin_only
 from src.shared.services import services
 
 
-class Info(commands.GroupCog, name="info", description="Bot information commands"):
+class Info(commands.Cog):
     def __init__(self) -> None:
         self.start_time = discord.utils.utcnow()
 
-    @app_commands.command(name="bot", description="Mostra informações sobre o bot")
+    @app_commands.command(name="info", description="Mostra informações sobre o bot")
     @admin_only()
     async def info(self, interaction: discord.Interaction) -> None:
         uptime = discord.utils.utcnow() - self.start_time
@@ -51,43 +50,6 @@ class Info(commands.GroupCog, name="info", description="Bot information commands
         embed.set_thumbnail(url=services.bot.user.display_avatar.url)
 
         await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(
-        name="telegram", description="Mostra informações sobre o Telegram"
-    )
-    @admin_only()
-    async def telegram(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True)
-
-        # Telegram connection status
-        is_connected = services.client.is_connected()
-        if not is_connected:
-            await interaction.followup.send(
-                "❌ **Telegram:** Desconectado", ephemeral=True
-            )
-            return
-
-        status_lines: list[str] = []
-        status_lines.append("✅ **Telegram:** Conectado")
-
-        # Check authentication
-        try:
-            me = await services.client.get_me()
-            if not me:
-                status_lines.append(
-                    "❌ **Autenticação:** Não autenticado (use `/telegram login`)"
-                )
-            else:
-                status_lines.append(
-                    f"✅ **Autenticação:** Logado como **{me.first_name}** (@{me.username})"
-                )
-        except AUTH_ERRORS as e:
-            status_lines.append(f"❌ **Autenticação:** Erro - {str(e)}")
-        except (ConnectionError, TimeoutError) as e:
-            status_lines.append(f"⚠️ **Autenticação:** Erro ao verificar - {str(e)}")
-
-        message = "\n".join(status_lines)
-        await interaction.followup.send(message, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
