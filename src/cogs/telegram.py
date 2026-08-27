@@ -5,11 +5,13 @@ from contextlib import suppress
 import discord
 from discord import app_commands
 from discord.ext import commands
+from telethon.tl.types import User
 
 from src.services.telegram import qr as telegram
 from src.services.telegram.exceptions import AUTH_ERRORS, PASSWORD_ERRORS
 from src.shared.permissions import admin_only
 from src.shared.services import services
+from src.shared.utils import format_telegram_account
 
 
 class Telegram(
@@ -19,6 +21,37 @@ class Telegram(
 ):
     def __init__(self) -> None:
         self.pending_qr_messages: dict[int, discord.Message] = {}
+
+    @app_commands.command(
+        name="status", description="Mostra o estado da conexão com o Telegram"
+    )
+    @admin_only()
+    async def status(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        if not services.client.is_connected():
+            await interaction.followup.send(
+                "❌ **Telegram:** Desconectado", ephemeral=True
+            )
+            return
+
+        status_lines = ["✅ **Telegram:** Conectado"]
+
+        try:
+            me = await services.client.get_me()
+            if isinstance(me, User):
+                account = format_telegram_account(me, bold=True)
+                status_lines.append(f"✅ **Autenticação:** Logado como {account}")
+            else:
+                status_lines.append(
+                    "❌ **Autenticação:** Não autenticado (use `/telegram login`)"
+                )
+        except AUTH_ERRORS as e:
+            status_lines.append(f"❌ **Autenticação:** Erro - {str(e)}")
+        except (ConnectionError, TimeoutError) as e:
+            status_lines.append(f"⚠️ **Autenticação:** Erro ao verificar - {str(e)}")
+
+        await interaction.followup.send("\n".join(status_lines), ephemeral=True)
 
     @app_commands.command(name="login", description="Faz login no Telegram via QR code")
     @app_commands.describe(
@@ -44,10 +77,10 @@ class Telegram(
                 await services.client.connect()
 
             me = await services.client.get_me()
-            if me:
+            if isinstance(me, User):
+                account = format_telegram_account(me, bold=True)
                 await interaction.followup.send(
-                    f"Já está logado como **{me.first_name}** (@{me.username})",
-                    ephemeral=True,
+                    f"Já está logado como {account}", ephemeral=True
                 )
                 return
         except AUTH_ERRORS:
@@ -89,7 +122,7 @@ class Telegram(
                     ephemeral=True,
                 )
                 self.pending_qr_messages[user_id] = qr_message
-            except (ValueError, OSError):
+            except ValueError, OSError:
                 # Fallback to ASCII QR code if image generation fails
                 ascii_qr = telegram.gen_qr_ascii(url)
                 qr_message = await interaction.followup.send(
@@ -109,10 +142,11 @@ class Telegram(
         async def send_success() -> None:
             await cleanup_qr_message()
             me = await services.client.get_me()
-            await interaction.followup.send(
-                f"Login realizado com sucesso! Logado como **{me.first_name}**",
-                ephemeral=True,
-            )
+            message = "Login realizado com sucesso!"
+            if isinstance(me, User):
+                account = format_telegram_account(me, bold=True)
+                message += f" Logado como {account}"
+            await interaction.followup.send(message, ephemeral=True)
 
         async def on_qr_expired() -> None:
             await cleanup_qr_message()
@@ -145,7 +179,7 @@ class Telegram(
                     "**Senha inválida:** A senha fornecida está incorreta. Por favor, verifique e tente novamente.",
                     ephemeral=True,
                 )
-            except (TimeoutError, asyncio.CancelledError):
+            except TimeoutError, asyncio.CancelledError:
                 # Timeout/expired errors are handled by expired_callback
                 pass
             except ValueError as e:
