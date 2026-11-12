@@ -1,20 +1,23 @@
-"""Reminder management functions using the Database class with group support."""
-
 import sqlite3
-from typing import TYPE_CHECKING, TypedDict
+from dataclasses import dataclass
 
-from src.database import get_database
+from src.shared.exceptions import (
+    ReminderGroupAlreadyExistsError,
+    ReminderGroupNotFoundError,
+    ReminderLimitReachedError,
+    ReminderTextExistsError,
+)
+from src.shared.services import services
 from src.shared.utils import sanitize_text
 
-if TYPE_CHECKING:
-    from src.database import Database
 
-
-class ReminderGroup(TypedDict):
-    """Type for a reminder group with its texts."""
-
+@dataclass
+class ReminderGroup:
     group_name: str
     texts: list[str]
+
+
+type ReminderGroupsByUser = dict[int, list[ReminderGroup]]
 
 
 # Constants
@@ -22,16 +25,9 @@ DEFAULT_GROUP_NAME = "Padrão"
 MAX_GROUPS_PER_USER = 25
 MAX_TEXTS_PER_GROUP = 25
 
-# Error codes
-ERROR_LIMIT_REACHED = "limit_reached"
-ERROR_ALREADY_EXISTS = "already_exists"
-ERROR_GROUP_NOT_FOUND = "group_not_found"
-ERROR_TEXT_EXISTS = "text_exists"
-
 
 def _init_reminders_tables() -> None:
-    """Initialize reminder tables if they don't exist."""
-    db = get_database()
+    db = services.database
 
     # Create reminder_groups table
     if not db.table_exists("reminder_groups"):
@@ -61,11 +57,11 @@ def _init_reminders_tables() -> None:
         db.create_table_if_not_exists(create_texts_table)
 
     # Create triggers to auto-update updated_at when texts are added/removed
-    _create_update_triggers(db)
+    _create_update_triggers()
 
     # Migrate old reminders table if it exists
     if db.table_exists("reminders") and not db.table_exists("_reminders_migrated"):
-        _migrate_old_reminders(db)
+        _migrate_old_reminders()
         # Mark migration as complete
         db.execute(
             """
@@ -76,8 +72,8 @@ def _init_reminders_tables() -> None:
         )
 
 
-def _create_update_triggers(db: "Database") -> None:
-    """Create triggers to automatically update updated_at when texts are added/removed."""
+def _create_update_triggers() -> None:
+    db = services.database
     # Drop existing triggers if they exist (to allow re-running)
     # DROP TRIGGER IF EXISTS won't raise an exception, so no try/except needed
     db.execute("DROP TRIGGER IF EXISTS update_group_on_text_insert")
@@ -106,8 +102,8 @@ def _create_update_triggers(db: "Database") -> None:
     """)
 
 
-def _migrate_old_reminders(db: "Database") -> None:
-    """Migrate old reminders table to new group-based structure."""
+def _migrate_old_reminders() -> None:
+    db = services.database
     try:
         # Get all old reminders
         old_reminders = db.fetch_all(
@@ -167,7 +163,7 @@ def _get_group_id(user_id: int, group_name: str) -> int | None:
     Returns:
         Group ID if found, None otherwise
     """
-    db = get_database()
+    db = services.database
     result = db.fetch_one(
         "SELECT id FROM reminder_groups WHERE user_id = ? AND group_name = ?",
         (user_id, group_name),
@@ -175,7 +171,7 @@ def _get_group_id(user_id: int, group_name: str) -> int | None:
     return result["id"] if result else None
 
 
-def create_group(user_id: int, group_name: str) -> tuple[bool, str | None]:
+def create_group(user_id: int, group_name: str) -> None:
     """
     Create a new reminder group for a user.
 
@@ -183,17 +179,18 @@ def create_group(user_id: int, group_name: str) -> tuple[bool, str | None]:
         user_id: Discord user ID
         group_name: Name of the group
 
-    Returns:
-        Tuple of (success, error_message):
-        - (True, None) if created successfully
-        - (False, ERROR_ALREADY_EXISTS) if group already exists
-        - (False, ERROR_LIMIT_REACHED) if user has reached max groups
+    Raises:
+        ReminderGroupAlreadyExistsError: If group already exists
+        ReminderLimitReachedError: If user has reached max groups
+        sqlite3.DatabaseError: If database operation fails
     """
-    db = get_database()
+    db = services.database
 
     # Check if group already exists first
     if _get_group_id(user_id, group_name) is not None:
-        return (False, ERROR_ALREADY_EXISTS)
+        raise ReminderGroupAlreadyExistsError(
+            f"Reminder group '{group_name}' already exists for user {user_id}"
+        )
 
     # Check if user has reached max groups (only for new groups)
     user_groups_count = db.fetch_one(
@@ -201,22 +198,23 @@ def create_group(user_id: int, group_name: str) -> tuple[bool, str | None]:
         (user_id,),
     )
     if user_groups_count and user_groups_count["count"] >= MAX_GROUPS_PER_USER:
-        return (False, ERROR_LIMIT_REACHED)
+        raise ReminderLimitReachedError(
+            f"User {user_id} has reached the maximum of {MAX_GROUPS_PER_USER} reminder groups"
+        )
 
     try:
         db.execute(
             "INSERT INTO reminder_groups (user_id, group_name) VALUES (?, ?)",
             (user_id, group_name),
         )
-        return (True, None)
     except sqlite3.IntegrityError:
         # Should not happen since we checked existence, but handle just in case
-        return (False, ERROR_ALREADY_EXISTS)
+        raise ReminderGroupAlreadyExistsError(
+            f"Reminder group '{group_name}' already exists for user {user_id}"
+        ) from None
 
 
-def add_text_to_group(
-    user_id: int, group_name: str, text: str
-) -> tuple[bool, str | None]:
+def add_text_to_group(user_id: int, group_name: str, text: str) -> None:
     """
     Add a text to a reminder group.
 
@@ -225,18 +223,19 @@ def add_text_to_group(
         group_name: Name of the group
         text: Text to add to the group
 
-    Returns:
-        Tuple of (success, error_message):
-        - (True, None) if added successfully
-        - (False, ERROR_GROUP_NOT_FOUND) if group doesn't exist
-        - (False, ERROR_TEXT_EXISTS) if text already exists in group
-        - (False, ERROR_LIMIT_REACHED) if group has reached max texts
+    Raises:
+        ReminderGroupNotFoundError: If group doesn't exist
+        ReminderTextExistsError: If text already exists in group
+        ReminderLimitReachedError: If group has reached max texts
+        sqlite3.DatabaseError: If database operation fails
     """
     group_id = _get_group_id(user_id, group_name)
     if not group_id:
-        return (False, ERROR_GROUP_NOT_FOUND)
+        raise ReminderGroupNotFoundError(
+            f"Reminder group '{group_name}' not found for user {user_id}"
+        )
 
-    db = get_database()
+    db = services.database
 
     # Check if group has reached max texts
     texts_count = db.fetch_one(
@@ -244,24 +243,24 @@ def add_text_to_group(
         (group_id,),
     )
     if texts_count and texts_count["count"] >= MAX_TEXTS_PER_GROUP:
-        return (False, ERROR_LIMIT_REACHED)
+        raise ReminderLimitReachedError(
+            f"Reminder group '{group_name}' has reached the maximum of {MAX_TEXTS_PER_GROUP} texts"
+        )
 
+    # Sanitize text before saving
+    sanitized = sanitize_text(text)
     try:
-        # Sanitize text before saving
-        sanitized = sanitize_text(text)
         db.execute(
             "INSERT INTO reminder_texts (group_id, text) VALUES (?, ?)",
             (group_id, sanitized),
         )
-        return (True, None)
     except sqlite3.IntegrityError:
-        # Text already exists in group
-        return (False, ERROR_TEXT_EXISTS)
+        raise ReminderTextExistsError(
+            f"Text already exists in reminder group '{group_name}'"
+        ) from None
 
 
-def remove_text_from_group(
-    user_id: int, group_name: str, text: str
-) -> tuple[bool, str | None, bool]:
+def remove_text_from_group(user_id: int, group_name: str, text: str) -> bool:
     """
     Remove a text from a reminder group. Automatically deletes the group if it becomes empty.
 
@@ -271,16 +270,20 @@ def remove_text_from_group(
         text: Text to remove from the group
 
     Returns:
-        Tuple of (success, error_message, group_deleted):
-        - (True, None, False) if removed successfully and group still has texts
-        - (True, None, True) if removed successfully and group was deleted (was empty)
-        - (False, ERROR_GROUP_NOT_FOUND, False) if group doesn't exist
+        True if group was deleted (was empty), False if group still has texts
+
+    Raises:
+        ReminderGroupNotFoundError: If group doesn't exist
+        sqlite3.DatabaseError: If database operation fails
     """
     group_id = _get_group_id(user_id, group_name)
     if not group_id:
-        return (False, ERROR_GROUP_NOT_FOUND, False)
+        raise ReminderGroupNotFoundError(
+            f"Reminder group '{group_name}' not found for user {user_id}"
+        )
 
-    db = get_database()
+    db = services.database
+
     # Sanitize text for matching
     sanitized = sanitize_text(text)
     db.execute(
@@ -294,13 +297,11 @@ def remove_text_from_group(
         (group_id,),
     )
 
-    group_deleted = False
     if remaining_texts and remaining_texts["count"] == 0:
         # Group is empty, delete it
         db.execute("DELETE FROM reminder_groups WHERE id = ?", (group_id,))
-        group_deleted = True
-
-    return (True, None, group_deleted)
+        return True
+    return False
 
 
 def list_groups_by_user(
@@ -316,7 +317,7 @@ def list_groups_by_user(
     Returns:
         List of dictionaries with group_name (str) and texts (list[str])
     """
-    db = get_database()
+    db = services.database
     if group_name is not None:
         rows = db.fetch_all(
             """
@@ -351,12 +352,36 @@ def list_groups_by_user(
 
     result: list[ReminderGroup] = []
     for name, texts in groups.items():
-        group: ReminderGroup = {"group_name": name, "texts": texts}
-        result.append(group)
+        result.append(ReminderGroup(group_name=name, texts=texts))
     return result
 
 
-def delete_group(user_id: int, group_name: str) -> tuple[bool, str | None]:
+def list_all_groups_by_user() -> ReminderGroupsByUser:
+    """Return every non-empty reminder group, organized by Discord user."""
+    rows = services.database.fetch_all(
+        """
+        SELECT rg.user_id, rg.group_name, rt.text
+        FROM reminder_groups rg
+        INNER JOIN reminder_texts rt ON rg.id = rt.group_id
+        ORDER BY rg.user_id, rg.updated_at DESC, rg.id, rt.text
+        """
+    )
+
+    grouped: dict[int, dict[str, list[str]]] = {}
+    for row in rows:
+        user_groups = grouped.setdefault(row["user_id"], {})
+        user_groups.setdefault(row["group_name"], []).append(row["text"])
+
+    return {
+        user_id: [
+            ReminderGroup(group_name=group_name, texts=texts)
+            for group_name, texts in groups.items()
+        ]
+        for user_id, groups in grouped.items()
+    }
+
+
+def delete_group(user_id: int, group_name: str) -> None:
     """
     Delete a reminder group and all its texts.
 
@@ -364,65 +389,32 @@ def delete_group(user_id: int, group_name: str) -> tuple[bool, str | None]:
         user_id: Discord user ID
         group_name: Name of the group to delete
 
-    Returns:
-        Tuple of (success, error_message):
-        - (True, None) if deleted successfully
-        - (False, ERROR_GROUP_NOT_FOUND) if group doesn't exist
+    Raises:
+        ReminderGroupNotFoundError: If group doesn't exist
+        sqlite3.DatabaseError: If database operation fails
     """
     group_id = _get_group_id(user_id, group_name)
     if not group_id:
-        return (False, ERROR_GROUP_NOT_FOUND)
+        raise ReminderGroupNotFoundError(
+            f"Reminder group '{group_name}' not found for user {user_id}"
+        )
 
-    db = get_database()
+    db = services.database
     db.execute("DELETE FROM reminder_groups WHERE id = ?", (group_id,))
-    return (True, None)
 
 
-def find_matching_reminders(text: str) -> dict[int, list[str]]:
-    """
-    Find users whose reminder groups match the given text (all texts in group must match).
+def find_matching_reminders(
+    text: str, groups_by_user: ReminderGroupsByUser | None = None
+) -> dict[int, list[str]]:
+    """Find users whose reminder groups are fully contained in the given text."""
+    if groups_by_user is None:
+        groups_by_user = list_all_groups_by_user()
 
-    Args:
-        text: Text to search for reminders in (will be sanitized internally)
-
-    Returns:
-        Dictionary mapping user IDs to lists of matching group names
-    """
-    db = get_database()
-    # Sanitize input text for matching (stored texts are already sanitized)
     text_sanitized = sanitize_text(text)
-
-    # Single query with JOIN to get all groups with their texts
-    groups_with_texts = db.fetch_all(
-        """
-        SELECT rg.user_id, rg.group_name, rt.text
-        FROM reminder_groups rg
-        LEFT JOIN reminder_texts rt ON rg.id = rt.group_id
-        ORDER BY rg.user_id, rg.id
-    """
-    )
-
-    # Group by user_id and group_name, collecting texts
-    groups_by_user: dict[int, dict[str, list[str]]] = {}
-    for row in groups_with_texts:
-        user_id = row["user_id"]
-        group_name = row["group_name"]
-        text_val = row["text"]
-
-        if user_id not in groups_by_user:
-            groups_by_user[user_id] = {}
-        if group_name not in groups_by_user[user_id]:
-            groups_by_user[user_id][group_name] = []
-        if text_val:
-            groups_by_user[user_id][group_name].append(text_val)
-
-    # Check which groups have all texts matching
-    reminder_by_user: dict[int, list[str]] = {}
+    matches: dict[int, list[str]] = {}
     for user_id, groups in groups_by_user.items():
-        for group_name, texts in groups.items():
-            if texts and all(text_val in text_sanitized for text_val in texts):
-                if user_id not in reminder_by_user:
-                    reminder_by_user[user_id] = []
-                reminder_by_user[user_id].append(group_name)
+        for group in groups:
+            if all(group_text in text_sanitized for group_text in group.texts):
+                matches.setdefault(user_id, []).append(group.group_name)
 
-    return reminder_by_user
+    return matches

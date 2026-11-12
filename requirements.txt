@@ -1,6 +1,0 @@
-telethon
-discord.py
-python-dotenv
-qrcode[pil]
-aiohttp
-watchfiles
