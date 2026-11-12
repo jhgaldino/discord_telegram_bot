@@ -105,6 +105,7 @@ Quando uma publicação combina com vários grupos do mesmo usuário, o bot junt
 Estes comandos são apenas para administradores:
 
 - `/telegram login [senha:<senha-2FA>]`
+- `/telegram logout` — desconecta a conta e limpa a sessão local
 - `/telegram status`
 - `/canais add canal:<link|username|id>`
 - `/canais rm canal:<link|username|id>`

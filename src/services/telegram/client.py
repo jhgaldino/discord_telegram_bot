@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from inspect import isawaitable
 
 import telethon
 from telethon.tl.functions.account import UpdateNotifySettingsRequest
@@ -38,6 +39,31 @@ class TelegramClient(telethon.TelegramClient):
     async def disconnect(self) -> None:
         await super().disconnect()
         logger.info("Telegram client disconnected")
+
+    async def log_out_and_recreate(self) -> TelegramClient:
+        """Log out, discard the local session, and return a fresh client.
+
+        Telethon clients cannot be reused after ``log_out`` because that method
+        deletes their session and sets it to ``None``. A stale/invalid session
+        may also make the remote logout fail, so the local session is deleted as
+        a fallback before creating the replacement.
+        """
+        session = self.session
+        logged_out = False
+
+        if self.is_connected():
+            logged_out = await super().log_out()
+
+        if not logged_out:
+            if self.is_connected():
+                await self.disconnect()
+
+            if session is not None:
+                deletion_result = session.delete()
+                if isawaitable(deletion_result):
+                    await deletion_result
+
+        return type(self)(api_id=self.api_id, api_hash=self.api_hash)
 
     async def ensure_channel_subscription(self, channel: Channel) -> bool:
         """Subscribe, archive, and mute a channel unless already subscribed."""

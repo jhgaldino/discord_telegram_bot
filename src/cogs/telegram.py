@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 from contextlib import suppress
 
 import discord
@@ -13,6 +14,8 @@ from src.shared.permissions import admin_only
 from src.shared.services import services
 from src.shared.utils import format_telegram_account
 
+logger = logging.getLogger(__name__)
+
 
 class Telegram(
     commands.GroupCog,
@@ -21,6 +24,22 @@ class Telegram(
 ):
     def __init__(self) -> None:
         self.pending_qr_messages: dict[int, discord.Message] = {}
+        self.login_task: asyncio.Task[None] | None = None
+
+    async def _cancel_login(self) -> None:
+        task = self.login_task
+        if task is not None and not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        self.login_task = None
+
+    async def _cleanup_all_qr_messages(self) -> None:
+        messages = list(self.pending_qr_messages.values())
+        self.pending_qr_messages.clear()
+        for message in messages:
+            with suppress(discord.NotFound, discord.HTTPException):
+                await message.delete()
 
     @app_commands.command(
         name="status", description="Mostra o estado da conexão com o Telegram"
@@ -38,10 +57,15 @@ class Telegram(
         status_lines = ["✅ **Telegram:** Conectado"]
 
         try:
+            is_authorized = await services.client.is_user_authorized()
             me = await services.client.get_me()
             if isinstance(me, User):
                 account = format_telegram_account(me, bold=True)
                 status_lines.append(f"✅ **Autenticação:** Logado como {account}")
+            elif is_authorized:
+                status_lines.append(
+                    "⚠️ **Autenticação:** Sessão inconsistente (use `/telegram logout` e faça login novamente)"
+                )
             else:
                 status_lines.append(
                     "❌ **Autenticação:** Não autenticado (use `/telegram login`)"
@@ -64,6 +88,13 @@ class Telegram(
         # Defer interaction immediately to prevent timeout
         await interaction.response.defer(ephemeral=True)
 
+        if self.login_task is not None and not self.login_task.done():
+            await interaction.followup.send(
+                "Já existe um login do Telegram em andamento. Escaneie o QR code atual ou aguarde ele expirar.",
+                ephemeral=True,
+            )
+            return
+
         # Delete any previously pending QR code message for this user
         user_id = interaction.user.id
         if user_id in self.pending_qr_messages:
@@ -76,11 +107,18 @@ class Telegram(
             if not services.client.is_connected():
                 await services.client.connect()
 
+            is_authorized = await services.client.is_user_authorized()
             me = await services.client.get_me()
             if isinstance(me, User):
                 account = format_telegram_account(me, bold=True)
                 await interaction.followup.send(
                     f"Já está logado como {account}", ephemeral=True
+                )
+                return
+            if is_authorized:
+                await interaction.followup.send(
+                    "A sessão do Telegram está inconsistente. Use `/telegram logout` para limpá-la e depois tente o login novamente.",
+                    ephemeral=True,
                 )
                 return
         except AUTH_ERRORS:
@@ -146,6 +184,7 @@ class Telegram(
             if isinstance(me, User):
                 account = format_telegram_account(me, bold=True)
                 message += f" Logado como {account}"
+            services.notifier.start()
             await interaction.followup.send(message, ephemeral=True)
 
         async def on_qr_expired() -> None:
@@ -187,6 +226,7 @@ class Telegram(
                 await interaction.followup.send(f"**Erro:** {str(e)}", ephemeral=True)
             except Exception as e:
                 # Other unexpected errors
+                logger.exception("Unexpected error during Telegram QR login")
                 await interaction.followup.send(
                     f"**Erro durante o login:** {str(e)}", ephemeral=True
                 )
@@ -194,8 +234,47 @@ class Telegram(
                 # Always cleanup QR message, even if success/expired callbacks already did it
                 # cleanup_qr_message is idempotent, so calling it multiple times is safe
                 await cleanup_qr_message()
+                if self.login_task is asyncio.current_task():
+                    self.login_task = None
 
-        asyncio.create_task(run_login())
+        self.login_task = asyncio.create_task(run_login())
+
+    @app_commands.command(
+        name="logout", description="Desconecta a conta do Telegram e limpa a sessão"
+    )
+    @admin_only()
+    async def logout(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        await self._cancel_login()
+        await self._cleanup_all_qr_messages()
+
+        # The notifier's handler belongs to the old client and must be
+        # registered again on the fresh client after Telethon logs out.
+        services.notifier.stop()
+        old_client = services.client
+
+        try:
+            new_client = await old_client.log_out_and_recreate()
+            services.replace_client(new_client)
+            await new_client.connect()
+            services.notifier.start()
+        except Exception:
+            logger.exception("Failed to reset the Telegram session")
+            await interaction.followup.send(
+                "A sessão do Telegram foi encerrada, mas não consegui reconectar o cliente. Reinicie o bot antes de tentar o login novamente.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            "Logout do Telegram concluído. A sessão local foi limpa; use `/telegram login` para conectar uma conta novamente.",
+            ephemeral=True,
+        )
+
+    async def cog_unload(self) -> None:
+        await self._cancel_login()
+        await self._cleanup_all_qr_messages()
 
 
 async def setup(bot: commands.Bot) -> None:

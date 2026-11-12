@@ -19,6 +19,11 @@ class ServiceRegistry:
 
     __slots__ = ("_bot", "_client", "_notifier", "_database")
 
+    _bot: Bot | None
+    _client: TelegramClient | None
+    _notifier: ReminderNotifier | None
+    _database: Database | None
+
     _instance: ServiceRegistry | None = None
 
     def __new__(cls) -> ServiceRegistry:
@@ -59,6 +64,14 @@ class ServiceRegistry:
         """Set the Telegram client instance."""
         if self._client is not None:
             raise RuntimeError("Telegram client has already been initialized")
+        self._client = value
+
+    def replace_client(self, value: TelegramClient) -> None:
+        """Replace a Telegram client that can no longer be reused after logout."""
+        if self._client is None:
+            raise ServiceNotInitializedError(
+                "Telegram client has not been initialized yet"
+            )
         self._client = value
 
     @property

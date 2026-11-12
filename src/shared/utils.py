@@ -6,8 +6,11 @@ from telethon.tl import TLObject
 from telethon.tl.types import User
 
 
-def format_telegram_account(user: User, bold: bool = False) -> str:
-    name = user.first_name or "Unknown"
+def format_telegram_account(user: User | None, bold: bool = False) -> str:
+    if user is None:
+        return "conta desconhecida"
+
+    name = user.first_name or "nome desconhecido"
     if bold:
         name = f"**{name}**"
 
