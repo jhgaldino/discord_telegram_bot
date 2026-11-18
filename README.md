@@ -1,149 +1,162 @@
-# Bot de Integração Discord-Telegram v2
+# Bot de lembretes do Telegram no Discord
 
-Bot que integra mensagens de canais do Telegram com servidores do Discord, desenvolvido para aprendizado e desenvolvimento de skills.
+Este bot acompanha alguns canais do Telegram e manda uma DM no Discord quando encontra algo que você pediu para lembrar.
 
-## Funcionalidades
+Cada pessoa cadastra os próprios lembretes e recebe uma DM quando uma publicação combina com eles.
 
-- 🔄 **Hot-reload automático** de extensões (cogs) durante desenvolvimento
-- 🔐 **Autenticação via QR Code** para Telegram com suporte a 2FA
-- 📨 **Filtro inteligente** que envia apenas mensagens com links de promoções
-- ⚡ **Inicialização paralela** do bot Discord e cliente Telegram para melhor performance
-- 🎯 **Comandos slash** modernos usando `app_commands`
-- 🛡️ **Tratamento robusto de erros** com cleanup automático de recursos
-- 📊 **Comandos de status** para monitorar o estado do bot e conexões
+## Como funciona
 
-## Arquitetura
+1. Um administrador conecta a conta do Telegram ao bot.
+2. O administrador escolhe quais canais públicos do Telegram serão acompanhados.
+3. Cada usuário cadastra seus lembretes com `/lembretes add`.
+4. Quando uma publicação combina com um lembrete, o bot envia uma DM para o usuário.
 
-O projeto segue uma arquitetura modular e desacoplada:
+Por padrão, o bot só verifica publicações que tenham um link `https://`.
 
-- **`src/services/discord/`** - Cliente Discord com hot-reload de cogs
-- **`src/services/telegram/`** - Cliente Telegram com autenticação QR
-- **`src/cogs/`** - Extensões modulares (comandos organizados por grupo)
-- **`src/shared/`** - Código compartilhado entre serviços
-- **`src/config.py`** - Gerenciamento centralizado de configuração e inicialização
+Um grupo pode ter mais de um texto. Nesse caso, todos precisam aparecer na mesma publicação. Por exemplo, um grupo com `notebook` e `cupom` só combina com mensagens que tenham os dois textos.
 
-### Características Técnicas
-
-- **Inicialização paralela**: Bot Discord e cliente Telegram são inicializados simultaneamente usando `asyncio.gather()`
-- **Type safety**: Tipagem completa com type hints e validação em tempo de execução
-- **Cleanup automático**: Recursos são limpos automaticamente mesmo em caso de erro
-- **Factory pattern**: Uso de métodos `create_and_initialize()` para criação consistente de instâncias
 
 ## Requisitos
 
-- Python 3.10 ou superior
-- Conta no Discord com bot criado
-- Conta no Telegram com API credentials
+- Python 3.14 ou mais recente
+- [uv](https://github.com/astral-sh/uv)
+- Um bot criado no Discord
+- Uma conta do Telegram com credenciais de API
 
 ## Instalação
 
-### 1. Clone o Repositório
+Clone o projeto e instale as dependências:
 
 ```bash
 git clone <repository-url>
 cd discord_telegram_bot
+uv sync
 ```
 
-### 2. Configure o Ambiente Virtual
-
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Instale as Dependências
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure as Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+Crie um arquivo `.env` na raiz do projeto:
 
 ```env
+ENVIRONMENT=development
 DISCORD_TOKEN=seu_token_do_discord
 TELEGRAM_API_ID=seu_api_id
 TELEGRAM_API_HASH=seu_api_hash
-TELEGRAM_CHANNELS=canal1,canal2
-DISCORD_CHANNEL_IDS=123456789,987654321
 ```
 
-**Como obter as credenciais:**
+O token do bot pode ser criado no [Discord Developer Portal](https://discord.com/developers/applications). As credenciais do Telegram ficam em [my.telegram.org](https://my.telegram.org/apps).
 
-- **Discord Token**: [Discord Developer Portal](https://discord.com/developers/applications) > Seu App > Bot > Token
-- **Telegram API**: [Telegram API](https://my.telegram.org/apps) > API development tools
-
-### 5. Execute o Bot
+Depois, execute:
 
 ```bash
-python main.py
+uv run main.py
 ```
 
-O bot inicializará ambos os serviços (Discord e Telegram) em paralelo. Se já houver uma sessão válida do Telegram, a conexão será automática.
+## Primeira configuração
 
-## Uso
+### 1. Conecte o Telegram
 
-### Login no Telegram
+Use `/telegram login` no Discord e leia o QR Code com o aplicativo do Telegram.
 
-O login é feito através do Discord usando QR code:
+Se a conta usa autenticação em dois fatores, informe a senha no parâmetro opcional `senha`. Esse comando só pode ser usado por administradores.
 
-1. Execute o comando `/telegram login` no Discord
-2. Escaneie o QR code exibido com o app Telegram
-3. Se tiver 2FA, use `/telegram login senha:sua_senha`
+### 2. Adicione os canais
 
-### Comandos Disponíveis
+Os canais do Telegram também são gerenciados por administradores:
 
-Todos os comandos são **slash commands** (barra `/`):
+- `/canais add canal:<link|username|id>`
+- `/canais rm canal:<link|username|id>`
+- `/canais ls`
 
-- `/info` - Informações sobre o bot
-- `/telegram login` - Fazer login no Telegram via QR code
-- `/lembretes` - Gerenciar lembretes (ver subcomandos)
+Apenas canais públicos podem ser adicionados. Se a conta ainda não participa do canal, o bot entra nele e tenta arquivá-lo e silenciá-lo. Se a conta já participa, as configurações existentes do Telegram não são alteradas.
 
-Alguns comandos são privados e apenas o dono do bot pode usar.
+Remover um canal apenas interrompe o monitoramento: a conta continua inscrita e as configurações do Telegram são preservadas.
 
-### Hot-reload durante Desenvolvimento
+### 3. Crie um lembrete
 
-Durante o desenvolvimento, as extensões (cogs) são recarregadas automaticamente quando você salva alterações nos arquivos. Isso acelera significativamente o ciclo de desenvolvimento.
+Qualquer usuário pode criar os próprios lembretes:
 
-## Estrutura do Projeto
-
+```text
+/lembretes add texto:notebook
 ```
-discord_telegram_bot/
-├── src/
-│   ├── cogs/             # Extensões modulares (comandos)
-│   ├── services/
-│   │   ├── discord/      # Cliente Discord
-│   │   ├── integration/  # Integração entre Discord e Telegram
-│   │   └── telegram/     # Cliente Telegram
-│   ├── shared/           # Código compartilhado
-│   └── config.py         # Configuração e inicialização
-├── main.py               # Ponto de entrada
-└── requirements.txt      # Dependências
+
+Isso cria um grupo chamado `notebook`. Para juntar vários textos no mesmo grupo, informe o nome do grupo:
+
+```text
+/lembretes add texto:notebook grupo:promoção
+/lembretes add texto:cupom grupo:promoção
 ```
+
+Nesse exemplo, a DM só será enviada quando `notebook` e `cupom` aparecerem na mesma publicação.
+
+## Comandos
+
+### Lembretes
+
+- `/lembretes add texto:<texto> [grupo:<nome>]` — adiciona um texto a um grupo
+- `/lembretes ls [grupo:<nome>]` — mostra seus lembretes
+- `/lembretes rm texto:<texto> [grupo:<nome>]` — remove um texto
+- `/lembretes del grupo:<nome>` — apaga um grupo inteiro
+
+Se o nome do grupo não for informado, o próprio texto será usado como nome. As respostas de `add`, `rm` e `del` são privadas; `ls` é público para que o usuário possa compartilhar sua configuração quando quiser.
+
+Quando uma publicação combina com vários grupos do mesmo usuário, o bot junta tudo em uma única DM.
+
+### Telegram e canais
+
+Estes comandos são apenas para administradores:
+
+- `/telegram login [senha:<senha-2FA>]`
+- `/telegram logout` — desconecta a conta e limpa a sessão local
+- `/telegram status`
+- `/canais add canal:<link|username|id>`
+- `/canais rm canal:<link|username|id>`
+- `/canais ls`
+
+O status do Telegram responde de forma privada.
+
+### Informações do bot
+
+- `/info` — mostra informações sobre o bot
+
+`/info` é restrito a administradores e responde publicamente.
 
 ## Desenvolvimento
 
-### Adicionando Novos Comandos
+Alguns comandos úteis:
 
-1. Crie um novo arquivo em `src/cogs/` ou adicione ao cog existente
-2. Use `commands.GroupCog` para organizar comandos em grupos
-3. O hot-reload detectará automaticamente as mudanças
+```bash
+# Instalar ou atualizar as dependências
+uv sync
 
-### Modificando o Filtro de Mensagens
+# Executar o bot
+uv run main.py
 
-O filtro está em `src/services/integration/forwarder.py`. Por padrão, apenas mensagens com links são encaminhadas. Modifique o método `_filter()` para alterar o comportamento.
+# Verificar o código
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check
 
-## Referências
+# Gerar o pacote
+uv build
+```
 
-Este projeto foi desenvolvido seguindo as melhores dicas do [Discord.py Masterclass Guide](https://fallendeity.github.io/discord.py-masterclass/), que fornece diretrizes sobre arquitetura, organização de código e padrões de design para bots Discord.
+Com `ENVIRONMENT=development`, o bot usa logs mais detalhados e recarrega os cogs quando os arquivos mudam. Em `production`, o hot reload fica desativado.
+
+O filtro das publicações fica em `src/services/notifications/notifier.py`. A lógica e o armazenamento dos lembretes ficam em `src/database/reminders.py`.
+
+## Estrutura do projeto
+
+```text
+src/
+├── cogs/              # Comandos do Discord
+├── database/          # Canais e lembretes no SQLite
+├── services/
+│   ├── discord/       # Cliente do Discord
+│   ├── notifications/ # Verificação dos lembretes e envio das DMs
+│   └── telegram/      # Cliente e login do Telegram
+└── shared/            # Código compartilhado
+```
 
 ## Mantenedores
 
-- [@jhgaldino](https://github.com/jhgaldino) - Idealização e desenvolvimento
-- [@DanGM96](https://github.com/DanGM96) - Desenvolvimento, arquitetura e contribuições
+- [@jhgaldino](https://github.com/jhgaldino)
+- [@DanGM96](https://github.com/DanGM96)

@@ -1,0 +1,41 @@
+[project]
+name = "discord-telegram-bot"
+version = "2.1.0"
+description = "Opt-in Discord reminder bot for matching Telegram channel posts"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "discord-py>=2.7.1",
+    "python-dotenv>=1.2.3",
+    "qrcode[pil]>=8.2",
+    "telethon>=1.44.0",
+    "watchfiles>=1.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.4",
+    "ty>=0.0.74",
+]
+
+[tool.ruff.lint]
+select = [
+    "ANN",      # Annotations (type hints)
+    "PLC",      # Pylint conventions (import from typing)
+    "E",        # pycodestyle errors
+    "W",        # pycodestyle warnings
+    "F",        # pyflakes (unused imports)
+    "I",        # isort (import sorting)
+    "B",        # flake8-bugbear (common bugs and design problems)
+    "C4",       # flake8-comprehensions (better comprehensions)
+    "UP",       # pyupgrade (modernize Python syntax)
+]
+ignore = [
+    "E501",     # Line too long
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

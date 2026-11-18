@@ -1,17 +1,16 @@
-"""Reminders cog - Commands for managing reminder groups."""
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.database import reminder_groups
-from src.database.reminder_groups import (
-    ERROR_ALREADY_EXISTS,
-    ERROR_LIMIT_REACHED,
-    ERROR_TEXT_EXISTS,
-    MAX_GROUPS_PER_USER,
-    MAX_TEXTS_PER_GROUP,
+from src.database import reminders
+from src.database.reminders import MAX_GROUPS_PER_USER, MAX_TEXTS_PER_GROUP
+from src.shared.exceptions import (
+    ReminderGroupAlreadyExistsError,
+    ReminderGroupNotFoundError,
+    ReminderLimitReachedError,
+    ReminderTextExistsError,
 )
+from src.shared.services import services
 from src.shared.utils import (
     format_list_to_markdown,
     plural,
@@ -24,28 +23,23 @@ class Reminders(
     name="lembretes",
     description="Gerenciamento de lembretes",
 ):
-    """A cog for reminder group commands."""
-
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def _resolve_group_name(group: str | None, text: str) -> str:
-        """Resolve group name: use grupo if provided, otherwise use texto."""
         return group if group is not None else text
 
     @staticmethod
     def _sanitize_and_escape_text(text: str) -> str:
-        """Sanitize text (as stored in DB) and escape for Discord markdown."""
         return discord.utils.escape_markdown(sanitize_text(text))
 
     @staticmethod
     def _escape_group(group: str) -> str:
-        """Escape group name for Discord markdown."""
         return discord.utils.escape_markdown(group)
 
     @app_commands.command(
-        name="adicionar",
+        name="add",
         description="Adiciona um texto a um grupo de lembretes",
     )
     @app_commands.describe(
@@ -58,64 +52,67 @@ class Reminders(
         texto: str,
         grupo: str | None = None,
     ) -> None:
-        """Add a text to a reminder group."""
         # If no group specified, use the text name as group name (preserving casing)
         grupo = self._resolve_group_name(grupo, texto)
-
-        # Try to ensure group exists
-        _, create_error = reminder_groups.create_group(interaction.user.id, grupo)
-        if create_error == ERROR_LIMIT_REACHED:
-            await interaction.response.send_message(
-                f"Você já tem {MAX_GROUPS_PER_USER} grupos de lembretes. "
-                "Delete um grupo antes de criar outro."
-            )
-            return
-        # If group doesn't exist and wasn't created, it's an error
-        if create_error and create_error != ERROR_ALREADY_EXISTS:
-            await interaction.response.send_message(
-                "Erro ao criar o grupo. Tente novamente."
-            )
-            return
-
-        success, add_error = reminder_groups.add_text_to_group(
-            interaction.user.id, grupo, texto
-        )
 
         escaped_text = self._sanitize_and_escape_text(texto)
         escaped_group = self._escape_group(grupo)
 
-        if not success:
-            if add_error == ERROR_LIMIT_REACHED:
-                await interaction.response.send_message(
-                    f"O grupo **{escaped_group}** já tem {MAX_TEXTS_PER_GROUP} textos. "
-                    "Remova um texto antes de adicionar outro."
-                )
-                return
-            if add_error == ERROR_TEXT_EXISTS:
-                await interaction.response.send_message(
-                    f"O texto **{escaped_text}** já existe no grupo **{escaped_group}**"
-                )
-                return
+        # Try to ensure group exists
+        try:
+            reminders.create_group(interaction.user.id, grupo)
+        except ReminderLimitReachedError:
             await interaction.response.send_message(
-                f"O grupo **{escaped_group}** não existe"
+                f"Você já tem {MAX_GROUPS_PER_USER} grupos de lembretes. "
+                "Delete um grupo antes de criar outro.",
+                ephemeral=True,
             )
             return
+        except ReminderGroupAlreadyExistsError:
+            # Group already exists, which is fine - we'll just add text to it
+            pass
+
+        # Add text to group
+        try:
+            reminders.add_text_to_group(interaction.user.id, grupo, texto)
+        except ReminderLimitReachedError:
+            await interaction.response.send_message(
+                f"O grupo **{escaped_group}** já tem {MAX_TEXTS_PER_GROUP} textos. "
+                "Remova um texto antes de adicionar outro.",
+                ephemeral=True,
+            )
+            return
+        except ReminderTextExistsError:
+            await interaction.response.send_message(
+                f"O texto **{escaped_text}** já existe no grupo **{escaped_group}**",
+                ephemeral=True,
+            )
+            return
+        except ReminderGroupNotFoundError:
+            await interaction.response.send_message(
+                f"O grupo **{escaped_group}** não existe", ephemeral=True
+            )
+            return
+
+        services.notifier.reload_reminders()
 
         # Success case
         if grupo == texto:
             # Auto-created group with text name
             await interaction.response.send_message(
-                f"Vou te lembrar quando encontrar **{escaped_text}**"
+                f"Vou te lembrar quando encontrar **{escaped_text}**",
+                ephemeral=True,
             )
             return
 
         # Explicit group specified
         await interaction.response.send_message(
-            f"Adicionei **{escaped_text}** ao grupo **{escaped_group}**"
+            f"Adicionei **{escaped_text}** ao grupo **{escaped_group}**",
+            ephemeral=True,
         )
 
     @app_commands.command(
-        name="listar",
+        name="ls",
         description="Mostra grupos de lembretes e seus textos",
     )
     @app_commands.describe(
@@ -124,11 +121,10 @@ class Reminders(
     async def list_groups(
         self, interaction: discord.Interaction, grupo: str | None = None
     ) -> None:
-        """List reminder groups for the user, optionally filtered by group name."""
         # Defer response immediately to prevent interaction timeout
         await interaction.response.defer()
 
-        groups = reminder_groups.list_groups_by_user(interaction.user.id, grupo)
+        groups = reminders.list_groups_by_user(interaction.user.id, grupo)
 
         if not groups:
             if grupo:
@@ -144,9 +140,8 @@ class Reminders(
 
         message_parts: list[str] = []
         for group in groups:
-            group_name = group["group_name"]
-            escaped_group = self._escape_group(group_name)
-            texts = group["texts"]
+            escaped_group = self._escape_group(group.group_name)
+            texts = group.texts
             if not texts:
                 message_parts.append(f"**{escaped_group}:** *(vazio)*")
                 continue
@@ -168,7 +163,7 @@ class Reminders(
         await interaction.followup.send(message)
 
     @app_commands.command(
-        name="remover",
+        name="rm",
         description="Remove um texto de um grupo de lembretes",
     )
     @app_commands.describe(
@@ -181,49 +176,46 @@ class Reminders(
         texto: str,
         grupo: str | None = None,
     ) -> None:
-        """Remove a text from a reminder group."""
         # If no group specified, use the text name as group name
         group_name = self._resolve_group_name(grupo, texto)
-        success, _, group_deleted = reminder_groups.remove_text_from_group(
-            interaction.user.id, group_name, texto
-        )
-
         escaped_text = self._sanitize_and_escape_text(texto)
         escaped_group = self._escape_group(group_name)
 
-        if not success:
-            await interaction.response.send_message(
-                f"O grupo **{escaped_group}** não existe ou o texto **{escaped_text}** não está nele"
+        try:
+            group_deleted = reminders.remove_text_from_group(
+                interaction.user.id, group_name, texto
             )
-            return
-
-        message = f"Removi **{escaped_text}** do grupo **{escaped_group}**"
-        if group_deleted:
-            message += ". O grupo foi deletado por estar vazio."
-        await interaction.response.send_message(message)
+            services.notifier.reload_reminders()
+            message = f"Removi **{escaped_text}** do grupo **{escaped_group}**"
+            if group_deleted:
+                message += ". O grupo foi deletado por estar vazio."
+            await interaction.response.send_message(message, ephemeral=True)
+        except ReminderGroupNotFoundError:
+            await interaction.response.send_message(
+                f"O grupo **{escaped_group}** não existe ou o texto **{escaped_text}** não está nele",
+                ephemeral=True,
+            )
 
     @app_commands.command(
-        name="deletar",
+        name="del",
         description="Deleta um grupo de lembretes e todos os seus textos",
     )
     @app_commands.describe(grupo="Nome do grupo a deletar")
     async def delete_group(self, interaction: discord.Interaction, grupo: str) -> None:
-        """Delete a reminder group."""
-        success, _ = reminder_groups.delete_group(interaction.user.id, grupo)
-
         escaped_group = self._escape_group(grupo)
 
-        if not success:
+        try:
+            reminders.delete_group(interaction.user.id, grupo)
+            services.notifier.reload_reminders()
             await interaction.response.send_message(
-                f"O grupo **{escaped_group}** não existe"
+                f"Deletei o grupo **{escaped_group}** e todos os seus textos",
+                ephemeral=True,
             )
-            return
-
-        await interaction.response.send_message(
-            f"Deletei o grupo **{escaped_group}** e todos os seus textos"
-        )
+        except ReminderGroupNotFoundError:
+            await interaction.response.send_message(
+                f"O grupo **{escaped_group}** não existe", ephemeral=True
+            )
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Setup function to add the cog to the bot."""
     await bot.add_cog(Reminders())
