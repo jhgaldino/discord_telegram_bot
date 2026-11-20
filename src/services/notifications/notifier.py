@@ -60,9 +60,13 @@ class ReminderNotifier:
                 if attempt == 0:
                     await asyncio.sleep(1)
                     continue
-                logger.warning("Reminder DM delivery unconfirmed for user %s: %s", user_id, error)
+                logger.warning(
+                    "Reminder DM delivery unconfirmed for user %s: %s", user_id, error
+                )
             except discord.HTTPException as error:
-                logger.warning("Could not send reminder DM to user %s: %s", user_id, error)
+                logger.warning(
+                    "Could not send reminder DM to user %s: %s", user_id, error
+                )
                 return
 
     async def _handle_message(self, event: NewMessage.Event) -> None:
