@@ -176,7 +176,27 @@ class Reminders(
         texto: str,
         grupo: str | None = None,
     ) -> None:
-        # If no group specified, use the text name as group name
+        await self._remove_text(interaction, texto, grupo)
+
+    @app_commands.command(
+        name="remover",
+        description="Remove um texto de um grupo de lembretes",
+    )
+    @app_commands.describe(
+        texto="Texto para remover do grupo",
+        grupo="Nome do grupo (opcional, se não especificado usa o nome do texto)",
+    )
+    async def remover(
+        self,
+        interaction: discord.Interaction,
+        texto: str,
+        grupo: str | None = None,
+    ) -> None:
+        await self._remove_text(interaction, texto, grupo)
+
+    async def _remove_text(
+        self, interaction: discord.Interaction, texto: str, grupo: str | None
+    ) -> None:
         group_name = self._resolve_group_name(grupo, texto)
         escaped_text = self._sanitize_and_escape_text(texto)
         escaped_group = self._escape_group(group_name)
