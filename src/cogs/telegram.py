@@ -160,7 +160,7 @@ class Telegram(
                     ephemeral=True,
                 )
                 self.pending_qr_messages[user_id] = qr_message
-            except ValueError, OSError:
+            except (ValueError, OSError):
                 # Fallback to ASCII QR code if image generation fails
                 ascii_qr = telegram.gen_qr_ascii(url)
                 qr_message = await interaction.followup.send(
@@ -218,7 +218,7 @@ class Telegram(
                     "**Senha inválida:** A senha fornecida está incorreta. Por favor, verifique e tente novamente.",
                     ephemeral=True,
                 )
-            except TimeoutError, asyncio.CancelledError:
+            except (TimeoutError, asyncio.CancelledError):
                 # Timeout/expired errors are handled by expired_callback
                 pass
             except ValueError as e:
