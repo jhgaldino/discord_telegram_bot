@@ -3,7 +3,7 @@ name = "discord-telegram-bot"
 version = "2.1.0"
 description = "Opt-in Discord reminder bot for matching Telegram channel posts"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "discord-py>=2.7.1",
     "python-dotenv>=1.2.3",

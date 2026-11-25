@@ -17,7 +17,7 @@ class ReminderGroup:
     texts: list[str]
 
 
-ReminderGroupsByUser = dict[int, list[ReminderGroup]]
+type ReminderGroupsByUser = dict[int, list[ReminderGroup]]
 
 
 # Constants
