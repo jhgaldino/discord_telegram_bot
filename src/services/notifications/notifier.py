@@ -1,7 +1,9 @@
 import asyncio
 import logging
 import re
+import secrets
 
+import aiohttp
 import discord
 from telethon.events import NewMessage
 from telethon.tl.types import Channel, Message
@@ -46,13 +48,26 @@ class ReminderNotifier:
         return f"https://t.me/c/{chat.id}/{event.message.id}"
 
     async def _send_dm_to_user(self, message: str, user_id: int) -> None:
-        try:
-            user = services.bot.get_user(user_id)
-            if user is None:
-                user = await services.bot.fetch_user(user_id)
-            await user.send(message, suppress_embeds=True)
-        except (discord.Forbidden, discord.NotFound, discord.HTTPException) as error:
-            logger.warning("Could not send reminder DM to user %s: %s", user_id, error)
+        nonce = secrets.randbits(64)
+        for attempt in range(2):
+            try:
+                user = services.bot.get_user(user_id)
+                if user is None:
+                    user = await services.bot.fetch_user(user_id)
+                await user.send(message, suppress_embeds=True, nonce=nonce)
+                return
+            except (aiohttp.ClientConnectionError, TimeoutError) as error:
+                if attempt == 0:
+                    await asyncio.sleep(1)
+                    continue
+                logger.warning(
+                    "Reminder DM delivery unconfirmed for user %s: %s", user_id, error
+                )
+            except discord.HTTPException as error:
+                logger.warning(
+                    "Could not send reminder DM to user %s: %s", user_id, error
+                )
+                return
 
     async def _handle_message(self, event: NewMessage.Event) -> None:
         message: Message = event.message
