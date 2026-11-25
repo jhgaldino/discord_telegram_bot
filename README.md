@@ -18,7 +18,7 @@ Um grupo pode ter mais de um texto. Nesse caso, todos precisam aparecer na mesma
 
 ## Requisitos
 
-- Python 3.14 ou mais recente
+- Python 3.11 ou mais recente
 - [uv](https://github.com/astral-sh/uv)
 - Um bot criado no Discord
 - Uma conta do Telegram com credenciais de API
